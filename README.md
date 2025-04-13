@@ -29,7 +29,7 @@ Features:
 * Download and install O2P_Tweak.apk from the release/assets page
 * Open the app
 * Allow O2P Tweaks to send you notifications when prompted.
-* Tap on "Enable JDSP"
+* Tap on "Enable JamesDSP"
 * Tap on "Install bundled JamesDSP..."
 
 	When asked:
