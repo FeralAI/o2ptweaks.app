@@ -40,7 +40,7 @@ Features:
 * Open the newly installed application
 	* Allow JamesDSP to send you notifications
 
-* Now let's configure JamesDSP for Retroid pocket 5 speakers:
+* Now let's configure JamesDSP:
 	* Tap the cog icon in the lower/left side of the screen to enter the Settings page
 	* Select "Backup and restore > Restore backup"
 	* Browse to your internal storage "Downloads" folder (/storage/emulated/0/Downloads) and select the file named `jamesdsp_backup_o2ptweaks.tar.gz`, which was copied during the JamesDSP installation.
