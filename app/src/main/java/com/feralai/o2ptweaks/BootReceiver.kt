@@ -23,7 +23,7 @@ class BootReceiver : BroadcastReceiver() {
 
     private val tag = "BootReceiver"
 
-    private val PREFS_NAME = "JdspPrefs"
+    private val PREFS_NAME = "O2PTweaksPrefs"
     private val JDSP_ENABLED_KEY = "jdspEnabled"
 
     override fun onReceive(context: Context, intent: Intent) {
