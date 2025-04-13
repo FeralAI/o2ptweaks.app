@@ -1,0 +1,14 @@
+-16db/oct rolloff at 300Hz
+3db boost between 3k and 4.5k
+2-3db notch dip at 5k
+7-9k 3db dip
+rolloff after 11k
+
+2.5db max @ 100Hz (distortion at max volume otherwise)
+
+
+GraphicEQ: 150 12; 250 6; 300 0; 3000 -3; 4500 -3; 5000 3; 6000 0; 7000 3; 9000 3; 10000 0; 
+GraphicEQ: 100 0; 150 9; 250 6; 300 0; 3000 -3; 4100 -2; 5000 1; 5500 0; 7000 0.5; 9000 -0.5; 10000 0; 12000 1.5; 
+
+RP5
+GraphicEQ: 480 0; 600 -5; 700 -15; 850 -10; 1200 -10; 1670 -15; 2160 -18; 2800 -18; 3800 -28; 5000 -8; 7000 0;
