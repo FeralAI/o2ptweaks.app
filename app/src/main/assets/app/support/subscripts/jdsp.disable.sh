@@ -28,7 +28,6 @@ done
 umount /system/etc/audio_effects.conf
 umount /system/vendor/etc/audio/sku_kalama/audio_effects.conf
 umount /system/vendor/etc/audio/sku_kalama/audio_effects.xml
-umount /vendor/etc/default_volume_tables.xml
 
 # Restart audio system
 killall -q audioserver

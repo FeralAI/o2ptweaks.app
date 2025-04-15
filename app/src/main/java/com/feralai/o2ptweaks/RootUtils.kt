@@ -92,21 +92,13 @@ fun copyAssetFolderToFilesDir(context: Context, assetFolderPath: String) {
     }
 }
 
-object JdspUtils {
+object RootUtils {
 
-    private const val TAG = "JdspUtils"
+    private const val TAG = "RootUtils"
 
     val subfolder = "app"
 
-    fun installJdsp(context:Context) {
-        // extract assets/$subfolder/ under applicazione/files/
-        // which means into in context.filesDir
-        var apkname = "JamesDSPManagerThePBone.apk"
-        ApkInstaller.installApkFromAssets(context, apkname, subfolder)
-    }
-
-
-    fun enableJdsp(context: Context) {
+    private fun runRootScript(context: Context, script: String) {
         // extract assets/$subfolder/ under application/files/
         // which means into in context.filesDir
         copyAssetFolderToFilesDir(context, subfolder)
@@ -117,31 +109,34 @@ object JdspUtils {
         // logpath is: /storage/emulated/0/app.name/files/lostlog.txt
         val logpath = getLogFile(context)
 
-        var cmd = "sh " + filespath + "/support/subscripts/jdsp.setup.sh" + " " + filespath + " > " + logpath
-        Log.d(TAG, "enabling jdsp with cmd= " + cmd)
+        val cmd = "sh $filespath/support/subscripts/$script $filespath > $logpath"
+        Log.d(TAG, "running root script with cmd= $cmd")
 
         //execute it:
         val rootexec = RootExec() // get instance
         val result = rootexec.executeAsRoot(cmd)
+        Log.d(TAG, "$script finished with result: $result")
+    }
+
+    fun installJdsp(context:Context) {
+        // extract assets/$subfolder/ under applicazione/files/
+        // which means into in context.filesDir
+        ApkInstaller.installApkFromAssets(context, "JamesDSPManagerThePBone.apk", subfolder)
+    }
+
+    fun enableJdsp(context: Context) {
+        runRootScript(context, "jdsp.enable.sh")
     }
 
     fun disableJdsp(context: Context) {
-        // extract assets/$subfolder/ under applicazione/files/
-        // which means into in context.filesDir
-        val subfolder = "app"
-        copyAssetFolderToFilesDir(context, subfolder)
+        runRootScript(context, "jdsp.disable.sh")
+    }
 
-        // filespath is: /data/user/0/com.feralai.o2ptweaks/files/$subfolder/
-        val filespath = File(context.filesDir, subfolder).absolutePath.toString()
+    fun enableO2PVolumeFix(context: Context) {
+        runRootScript(context, "o2pvf.enable.sh")
+    }
 
-        // logpath is: /storage/emulated/0/app.name/files/lostlog.txt
-        val logpath = getLogFile(context)
-
-        var cmd = "sh " + filespath + "/support/subscripts/jdsp.cleanup.sh" + " " + filespath + " > " + logpath
-        Log.d(TAG, "enabling jdsp with cmd= " + cmd)
-
-        //execute it:
-        val rootexec = RootExec() // get instance
-        val result = rootexec.executeAsRoot(cmd)
+    fun disableO2PVolumeFix(context: Context) {
+        runRootScript(context, "o2pvf.disable.sh")
     }
 }

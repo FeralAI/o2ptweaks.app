@@ -25,6 +25,7 @@ class BootReceiver : BroadcastReceiver() {
 
     private val PREFS_NAME = "O2PTweaksPrefs"
     private val JDSP_ENABLED_KEY = "jdspEnabled"
+    private val O2P_VOLUME_FIX_KEY = "o2pSpeakerVolumePatch"
 
     override fun onReceive(context: Context, intent: Intent) {
         Log.d(tag, "BootReceiver.onReceive() called")
@@ -39,18 +40,29 @@ class BootReceiver : BroadcastReceiver() {
                 }
             }
 
-            //Enable JDSP at boot?
             val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val isJdspEnabledAtBoot = sharedPrefs.getBoolean(JDSP_ENABLED_KEY, false)
-            if (isJdspEnabledAtBoot) {
+
+            //Enable JDSP at boot?
+            val jdspEnabled = sharedPrefs.getBoolean(JDSP_ENABLED_KEY, false)
+            if (jdspEnabled) {
                 createNotificationChannel(context)
                 showNotification(context)
                 Log.d(tag, "Enabling JamesDSP at boot...")
-                JdspUtils.enableJdsp(context)
+                RootUtils.enableJdsp(context)
             } else {
                 Log.d(tag, "Not enabling JamesDSP at boot...")
             }
 
+            // Enable O2P volume fix?
+            val o2pVolumeFix = sharedPrefs.getBoolean(O2P_VOLUME_FIX_KEY, false)
+            if (o2pVolumeFix) {
+                createNotificationChannel(context)
+                showNotification(context)
+                Log.d(tag, "Enabling O2P volume fix at boot...")
+                RootUtils.enableO2PVolumeFix(context)
+            } else {
+                Log.d(tag, "Not enabling O2P volume fix at boot...")
+            }
 
         } else {
             Log.d(tag, "Intent received: ${intent.action}")
