@@ -230,54 +230,27 @@ fun SettingsScreen(
 
         Spacer(modifier = modifier.padding(16.dp))
 
-        if (isO2P || isRooted) {
-            Row(
-                modifier = modifier.fillMaxWidth().padding(ROW_PADDING),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start,
-            ) {
-                Text(
-                    modifier = modifier.width(LABEL_WIDTH).padding(HEADING_PADDING),
-                    text = "Sound",
-                    color = Color(100, 100, 200),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+        Row(
+            modifier = modifier.fillMaxWidth().padding(ROW_PADDING),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start,
+        ) {
+            Text(
+                modifier = modifier.width(LABEL_WIDTH).padding(HEADING_PADDING),
+                text = "Sound",
+                color = Color(100, 100, 200),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
         }
 
-        if (isO2P || isRooted) {
-            SettingsRow(
-                label = "JamesDSP",
-                detail = "DSP library providing various EQ options and audio effects. " +
-                        "Install the JamesDSP Manager application before enabling this feature." +
-                        (if (isRooted) "\n\nMagisk module requires a restart to take effect." else ""),
-            ) {
-                if (isRooted) {
-                    Row(
-                        modifier = modifier.padding(SUBROW_PADDING),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start,
-                    ) {
-                        Button(
-                            modifier = modifier.width(BUTTON_WIDTH),
-                            onClick = {
-                                JdspUtils.installJdspMagiskModule(context)
-                                Toast.makeText(context, "JamesDSP Magisk Module Installed, Please Reboot", Toast.LENGTH_SHORT).show()
-                                onRebootRequired(false)
-                            },
-                        ) {
-                            Text("Install JamesDSP Module", style = MaterialTheme.typography.titleSmall)
-                        }
-                    }
-                }
-                else {
-                    Switch(
-                        checked = jdspEnabled,
-                        onCheckedChange = jdspEnabledChange
-                    )
-                }
-
+        SettingsRow(
+            label = "JamesDSP",
+            detail = "DSP library providing various EQ options and audio effects. " +
+                    "Install the JamesDSP Manager application before enabling this feature." +
+                    (if (isRooted) "\n\nMagisk module requires a restart to take effect." else ""),
+        ) {
+            if (isRooted) {
                 Row(
                     modifier = modifier.padding(SUBROW_PADDING),
                     verticalAlignment = Alignment.CenterVertically,
@@ -286,16 +259,38 @@ fun SettingsScreen(
                     Button(
                         modifier = modifier.width(BUTTON_WIDTH),
                         onClick = {
-                            JdspUtils.installJdspManager(context)
-                            if (isO2P) {
-                                JdspUtils.copyBackupFile(context)
-                            }
+                            JdspUtils.installJdspMagiskModule(context)
+                            Toast.makeText(context, "JamesDSP Magisk Module Installed, Please Reboot", Toast.LENGTH_SHORT).show()
+                            onRebootRequired(false)
                         },
                     ) {
-                        Text("Install JamesDSP Manager", style = MaterialTheme.typography.titleSmall)
+                        Text("Install JamesDSP Module", style = MaterialTheme.typography.titleSmall)
                     }
                 }
+            }
+            else {
+                Switch(
+                    checked = jdspEnabled,
+                    onCheckedChange = jdspEnabledChange
+                )
+            }
 
+            Row(
+                modifier = modifier.padding(SUBROW_PADDING),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start,
+            ) {
+                Button(
+                    modifier = modifier.width(BUTTON_WIDTH),
+                    onClick = {
+                        JdspUtils.installJdspManager(context)
+                        if (isO2P) {
+                            JdspUtils.copyBackupFile(context)
+                        }
+                    },
+                ) {
+                    Text("Install JamesDSP Manager", style = MaterialTheme.typography.titleSmall)
+                }
             }
 
         }
