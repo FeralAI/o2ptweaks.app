@@ -44,7 +44,7 @@ You must accept this prompt to continue.
 
 The **Install Magisk** button will download the latest Magisk stable release and begin the app installation.
 
-The downloaded Magisk APK file is located in your Download folder in case the manual install doesn't start.
+The downloaded Magisk APK file is located in your Download folder in case the automatic install doesn't start.
 
 This step will be unavailable if Magisk is already installed.
 
