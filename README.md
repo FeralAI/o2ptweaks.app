@@ -27,7 +27,7 @@ Download the latest release to your Android device and install.
 
 When prompted, allow notifications. This allows O2P Tweaks to run the tweaks on system startup.
 
-Check out these pages detailed info:
+Check out these pages for more details:
 
 * [User Guide](docs/USERGUIDE.md)
 * [JamesDSP Setup](docs/JAMESDSP.md)

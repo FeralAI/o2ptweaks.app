@@ -2,9 +2,11 @@
 
 O2P Tweaks has 2 options for enabling JamesDSP for handling system-wide EQ.
 
-The normal method is only compatible with the Odin 2 Portal and requires O2P Tweaks to run at startup in order to use after a reboot.
+The temp root method can be used on any device with the "Run script as Root" feature.
 
 The root method can be used on any rooted device, however no preconfigured settings are included.
+
+The included JamesDSP backup file is only intended for use with the Odin 2 Portal.
 
 ## Overview
 
@@ -29,7 +31,7 @@ Anecdotally, there is a marginal impact on latency for the Odin 2 Portal. (needs
 3. When prompted, allow JamesDSP Manager to send you notifications.
 4. Go the the `Sound > JamesDSP` section and tap the toggle switch to enable. This will load the JamesDSP library immediately and should open the JamesDSP manager app.
 
-### Enabling JamesDSP (Magisk)
+### Enabling JamesDSP (Magisk root)
 
 1. Open O2P Tweaks and navigate to the `Tweaks` page.
 2. Go the the `Sound > JamesDSP` section and tap `Install JamesDSP Manager`
@@ -43,6 +45,8 @@ Anecdotally, there is a marginal impact on latency for the Odin 2 Portal. (needs
 2. Tap the cog icon in the lower/left side of the screen to enter the Settings page
 3. Select "Backup and restore > Restore backup"
 4. Browse to your internal storage "Downloads" folder (/storage/emulated/0/Downloads) and select the file named jamesdsp_backup_o2ptweaks.tar.gz, which was copied during the JamesDSP installation.
+
+### Notes
 
 A few other steps may be required:
 

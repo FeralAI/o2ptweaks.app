@@ -24,8 +24,8 @@ The rooting process has been thoroughly tested on Android 13, and should work do
 1. Open the EZ Root screen and accept prompt
 2. Press the `Install Magisk` to install Magisk if not already present
 3. Tap `Create backup` to backup the boot partition on your device
-4. Tap `Prepare patch` to create a root-patched of the boot partition
-5. Tap `Flash patch` to save the root-patched partition to the device
+4. Tap `Prepare patch` to create a root-patched file of the boot partition
+5. Tap `Flash patch` to flash the root-patched partition file to the device
 6. Run Magisk and tap OK on the "Requires Additional Setup" prompt
 
 ## Detailed Steps
