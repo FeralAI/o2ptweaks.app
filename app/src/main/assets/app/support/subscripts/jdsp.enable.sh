@@ -87,7 +87,7 @@ chmod 0644      $SOUNDFX_DIR64/*
 chcon u:object_r:vendor_configs_file:s0 $SOUNDFX_DIR64/*
 
 # Copy JamesDSP backup to storage root
-cp -afv $SDIR/support/conf_files/jamesdsp_backup_o2ptweaks.backup /storage/emulated/0/Download/jamesdsp_backup_o2ptweaks.tar.gz
+# cp -afv $SDIR/support/conf_files/jamesdsp_backup_o2ptweaks.backup /storage/emulated/0/Download/jamesdsp_backup_o2ptweaks.tar.gz
 
 #Enable hidden API
 settings put global hidden_api_policy 1

@@ -1,68 +1,38 @@
-# 🛠️ O2P Tweaks App
+# <img src="docs/images/logo.webp" style="width: 24px;"> O2P Tweaks App
 
-O2P Tweaks is an Android application that leverages the temporary root functionality of the Odin2 Portal to apply fixes and enhancements to your device.
+O2P Tweaks is an Android application that leverages the temporary root functionality of some devices to apply fixes and enhancements.
 
-Features:
+This app was originally designed for the Odin2 Portal. Running this on other devices may work, but is not officially supported.
 
-* Adjusted volume curve for speaker output for lower minimum volume
-* Installs JamesDSP for system-wide audio equalization 
+## Features
 
-> This app is only for the Odin2 Portal. Running this on any other device is unsupported.
+Standard features include:
 
-### Benefit/what to expect:
-* An improvement in sound quality and volume control from the speakers.
-* A fairly linear frequency response from 150Hz to 10kHz
+* System info page with software and hardware details for firmware, battery, etc.
+* Install JamesDSP for system-wide audio equalization (O2P only)
+  * Includes JamesDSP backup with with tuned EQ curve for the Odin 2 Portal speaker 
+* Adjusted volume curve for speaker output for lower minimum volume (O2P only)
+* Adjust system DPI
+* Adjust system animation speed
 
-### What NOT to expect:
-* You won't hear anything lower than 150Hz
+If running a rooted device, the method of applying tweaks changes and some new options become available:
 
-### Drawbacks:
-* The audio output latency may increase by up to 70ms. (needs verification)
-* The output volume will be slightly lower
-* CPU usage may be slightly higher (<1%)
+* Install JamesDSP via Magisk module (compatible with more devices)
+* Adjust system DPI at boot instead of runtime (fixes some UI scaling issues)
+* Set the number of volume steps for more granular volume control
 
------------------------------
-### **ELI5, OVER-DETAILED HOW TO:**
------------------------------
-![O2P Tweaks Main Screen](repo_images/shot1.png?raw=true)
+## Usage
 
-* Download and install O2P_Tweak.apk from the release/assets page
-* Open the app
-* Allow O2P Tweaks to send you notifications when prompted.
-* Tap on "Enable JamesDSP"
-* Tap on "Install bundled JamesDSP..."
+Download the latest release to your Android device and install.
 
-	When asked:
-	* Confirm to "Open with package installer"
-	* Install unknown apps: -> allow from this source.
-	* Finally confirm JamesDSP installation	
+When prompted, allow notifications. This allows O2P Tweaks to run the tweaks on system startup.
 
-* Open the newly installed application
-	* Allow JamesDSP to send you notifications
+Check out these pages detailed info:
 
-* Now let's configure JamesDSP:
-	* Tap the cog icon in the lower/left side of the screen to enter the Settings page
-	* Select "Backup and restore > Restore backup"
-	* Browse to your internal storage "Downloads" folder (/storage/emulated/0/Downloads) and select the file named `jamesdsp_backup_o2ptweaks.tar.gz`, which was copied during the JamesDSP installation.
-	* You may need to toggle the "Settings > Audio processing > Legacy mode" option off and on again to engage the JamesDSP library (should be on when finished)
-	* If needed, turn on JamesDSP by tapping the "Power on" icon in the center/lower part of the screen.
-
-## You're done!
-
-Now go back to the O2P Tweaks app select if you want or not JamesDSP to start at every boot.
-
-Reboot to verify everything works correctly (give the app a few secs to setup everything).
+* [User Guide](docs/USERGUIDE.md)
+* [JamesDSP Setup](docs/JAMESDSP.md)
+* [EZ Root](docs/EZROOT.md)
 
 ## Credits/License:
 
-This app is based on the [jdsp4rp5.app](https://github.com/kokoko3k/jdsp4rp5.app) created by kokoko3k, and inherits the GNU General Public License v2.0.
-
-Original credits from the jdsp4rp5.app:
-
-* Provided libjamesdsp.so by James Fung 
-* Provided JamesDSPManagerThePBone.apk by James Fung
-* Thanks to ShadoV from JamesDSP [Community] Telegram channel
-for insights and support over audio_effects.xml
-* Thanks to Sayrune from RP5's discord channel
-for support on audio_policy_configuration.xml
-* Audio analysis done via: Room EQ Wizard https://www.roomeqwizard.com
+The initial release of this app is based on the [jdsp4rp5.app](https://github.com/kokoko3k/jdsp4rp5.app) created by kokoko3k, and inherits the GNU General Public License v2.0.

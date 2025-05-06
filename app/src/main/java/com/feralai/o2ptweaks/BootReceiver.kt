@@ -12,6 +12,8 @@ import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.feralai.o2ptweaks.utils.JdspUtils
+import com.feralai.o2ptweaks.utils.RootUtils
 
 fun getApplicationName(context: Context): String {
     val applicationInfo = context.applicationInfo
@@ -23,11 +25,10 @@ class BootReceiver : BroadcastReceiver() {
 
     private val tag = "BootReceiver"
 
-    private val PREFS_NAME = "O2PTweaksPrefs"
-    private val JDSP_ENABLED_KEY = "jdspEnabled"
-    private val O2P_VOLUME_FIX_KEY = "o2pSpeakerVolumePatch"
-
     override fun onReceive(context: Context, intent: Intent) {
+        if (!RootUtils.hasPServer())
+            return
+
         Log.d(tag, "BootReceiver.onReceive() called")
 
         if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_LOCKED_BOOT_COMPLETED) {
@@ -40,56 +41,63 @@ class BootReceiver : BroadcastReceiver() {
                 }
             }
 
-            val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val sharedPrefs = AppSettings.getSharedPrefs(context)
 
-            //Enable JDSP at boot?
-            val jdspEnabled = sharedPrefs.getBoolean(JDSP_ENABLED_KEY, false)
-            if (jdspEnabled) {
-                createNotificationChannel(context)
-                showNotification(context)
-                Log.d(tag, "Enabling JamesDSP at boot...")
-                RootUtils.enableJdsp(context)
-            } else {
-                Log.d(tag, "Not enabling JamesDSP at boot...")
+            // Set DPI
+            val dpi = AppSettings.getDpi(sharedPrefs)
+            RootUtils.setDpi(context, dpi)
+
+            // Set animation speed
+            val animSpeed = AppSettings.getAnimationSpeed(sharedPrefs)
+            RootUtils.setAnimationSpeed(context, animSpeed)
+
+            if (!RootUtils.isDeviceRooted) {
+                // Enable JDSP at boot?
+                val jdspEnabled = AppSettings.getJdspEnabled(sharedPrefs)
+                if (jdspEnabled) {
+                    createNotificationChannel(context)
+                    showNotification(context)
+                    Log.d(tag, "Enabling JamesDSP at boot...")
+                    JdspUtils.enableJdsp(context)
+                } else {
+                    Log.d(tag, "Not enabling JamesDSP at boot...")
+                }
+
+                // Enable O2P volume fix?
+                val o2pVolumeFix = AppSettings.getO2PVolumeFix(sharedPrefs)
+                if (o2pVolumeFix) {
+                    createNotificationChannel(context)
+                    showNotification(context)
+                    Log.d(tag, "Enabling O2P volume fix at boot...")
+                    RootUtils.enableO2PVolumeFix(context)
+                } else {
+                    Log.d(tag, "Not enabling O2P volume fix at boot...")
+                }
             }
-
-            // Enable O2P volume fix?
-            val o2pVolumeFix = sharedPrefs.getBoolean(O2P_VOLUME_FIX_KEY, false)
-            if (o2pVolumeFix) {
-                createNotificationChannel(context)
-                showNotification(context)
-                Log.d(tag, "Enabling O2P volume fix at boot...")
-                RootUtils.enableO2PVolumeFix(context)
-            } else {
-                Log.d(tag, "Not enabling O2P volume fix at boot...")
-            }
-
         } else {
             Log.d(tag, "Intent received: ${intent.action}")
         }
     }
 
     private fun createNotificationChannel(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channelId = "boot_channel"
-            val name = "Boot Notification Channel"
-            val descriptionText = "Channel for boot notifications"
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel(channelId, name, importance).apply {
-                description = descriptionText
-            }
-            val notificationManager: NotificationManager =
-                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-            Log.d(tag, "Notify channel created")
+        val channelId = "boot_channel"
+        val name = "Boot Notification Channel"
+        val descriptionText = "Channel for boot notifications"
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val channel = NotificationChannel(channelId, name, importance).apply {
+            description = descriptionText
         }
+        val notificationManager: NotificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+        Log.d(tag, "Notify channel created")
     }
 
     private fun showNotification(context: Context) {
         val builder = NotificationCompat.Builder(context, "boot_channel")
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(getApplicationName(context))
-            .setContentText("App started.")
+            .setContentText("App started${if (RootUtils.isDeviceRooted) " (ROOT MODE)" else "" }")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {

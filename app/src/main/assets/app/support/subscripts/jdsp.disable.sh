@@ -6,14 +6,14 @@ TMPFS64="$SDIR/support/o2ptweaks_tmpfs64"
 SOUNDFX_DIR=/vendor/lib/soundfx
 SOUNDFX_DIR64=/vendor/lib64/soundfx
 
-#pm disable james.dsp
+pm disable james.dsp
 
 # Cleanup
 for m in $(mount |grep tmpfs | grep $(basename $TMPFS)| awk -F' on ' '{print $2}' | awk -F' type ' '{print $1}') ; do
 	umount -l "$m"
 done
 
-for m in $(mount |grep tmpfs | grep $(basename $TMPFS64)| awk -F' on ' '{print $2}' | awk -F' type ' '{print $1}') ; do
+for m in $(mount |grep tmpfs | grep $(basename $TMPFS64| awk -F' on ' '{print $2}' | awk -F' type ' '{print $1}') ; do
 	umount -l "$m"
 done
 
