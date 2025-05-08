@@ -1,4 +1,4 @@
-# EZ Root
+# EZ Root Guide
 
 The EZ Root feature allows you to apply permanent root to your device with just a few button taps...without using PC utilities!
 
@@ -15,14 +15,17 @@ EZ Root requires a device that contains the "Run script as Root" functionality p
 These devices are confirmed to work:
 
 * AYN Odin2 Portal
+* Retroid Pocket Flip 2 (SD865 version)
 * Retroid Pocket Mini (V1 & V2)
+
+Other devices from those manufacturers with the same chipsets are likely also compatilble.
 
 The rooting process has been thoroughly tested on Android 13, and should work down to Android 10.
 
 ## Quick Steps
 
 1. Open the EZ Root screen and accept prompt
-2. Press the `Install Magisk` to install Magisk if not already present
+2. Tap `Install Magisk` to install Magisk if not already present
 3. Tap `Create backup` to backup the boot partition on your device
 4. Tap `Prepare patch` to create a root-patched file of the boot partition
 5. Tap `Flash patch` to flash the root-patched partition file to the device
@@ -30,33 +33,33 @@ The rooting process has been thoroughly tested on Android 13, and should work do
 
 ## Detailed Steps
 
-> NOTE: This walkthrough assumes a fresh install on a stock device.
+> **NOTE: This walkthrough assumes a fresh install on a stock device.**
 
-Each time O2P Tweaks is run and the EZ Root feature is accessed, you will be presented with a disclaimer and confirmation prompt:
+### Step 1 - Accept Prompt
+
+Each time O2P Tweaks is run and the EZ Root feature is accessed for the first time, you will be presented with a disclaimer and confirmation prompt:
 
 <img src="images/userguide-ezroot-confirm.png" style="width: 480px">
 
 You must accept this prompt to continue.
 
-### Step 1 - Install Magisk
+### Step 2 - Install Magisk
 
 <img src="images/userguide-ezroot-step1.png" style="width: 480px">
 
-The **Install Magisk** button will download the latest Magisk stable release and begin the app installation.
+The **Install Magisk** button will check Github for the latest Magisk stable release, download it, then begin the app installation. Please allow O2P Tweaks to install applications when prompted. The downloaded Magisk APK file is located in your Download folder in case the automatic install wasn't started.
 
-The downloaded Magisk APK file is located in your Download folder in case the automatic install doesn't start.
+This step will be disabled if Magisk is already installed.
 
-This step will be unavailable if Magisk is already installed.
-
-### Step 2 - Create Backup
+### Step 3 - Create Backup
 
 <img src="images/userguide-ezroot-step2.png" style="width: 480px">
 
 The **Create backup** button will create backup disk images of the boot partitions for the device's active boot slot. This results in files with a name of `init_boot_a.img` and `boot_a.img` for Slot A, or `init_boot_b.img` and `boot_b.img` for Slot B.
 
-The files are stored in the O2P Tweaks app data folder `/storage/emulated/0/com.feralai.o2ptweaks/files`, and also archived to your internal storage Download folder in the case manual recovery is required.
+The files are stored in the O2P Tweaks app data folder `/storage/emulated/0/Android/data/com.feralai.o2ptweaks/files`, and also archived to your internal storage Download folder in the case manual recovery is required.
 
-### Step 3 - Prepare Patch
+### Step 4 - Prepare Patch
 
 <img src="images/userguide-ezroot-step3.png" style="width: 480px">
 
@@ -68,17 +71,17 @@ The **Clear cache** option will clear out all temp and backup files, and is only
 
 > NOTE: The `.img` file that doesn't receive a patch will be removed from the app data folder since it's not required to flash root access.
 
-### Step 4 - Flash Patch
+### Step 5 - Flash Patch
 
 <img src="images/userguide-ezroot-step4.png" style="width: 480px">
 
-Once one of the `.img` files is patched, the **Flash patch** option will appear. Tapping this button will first prompt to confirm the flash step:
+Once one of the `.img` files is patched, the **Flash patch** option will be enabled. Tapping this button will first prompt to confirm the flash step:
 
 <img src="images/userguide-ezroot-step4a.png" style="width: 480px">
 
 Once confirmed a flash status popup will show and the process will begin. This step is very quick, finishing in just a few seconds. The device will then reboot.
 
-### Step 5 - Complete Magisk Installation
+### Step 6 - Complete Magisk Installation
 
 After rebooting from the flash step, open the Magisk application and you'll be prompted to complete setup:
 
@@ -88,7 +91,7 @@ Tap `OK` and Magisk will finish the install and reboot the device.
 
 ## Restoring Stock
 
-The **Restore stock** option is only available if a previous partition backup is detected in the O2P Tweaks app data folder `/storage/emulated/0/com.feralai.o2ptweaks/files`.
+The **Restore stock** option is only available if a previous partition backup is detected in the O2P Tweaks app data folder `/storage/emulated/0/Android/data/com.feralai.o2ptweaks/files`.
 
 If your device has an OTA update available or you need to send it in for service, it is highly recommended to remove root access from your device using the **Restore stock** option.
 
