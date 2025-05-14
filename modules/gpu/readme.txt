@@ -1,0 +1,7 @@
+GPU_ prefixed drivers from:
+GPU Driver (LH) Adreno
+https://t.me/lhmodshare
+
+A7xx prefixed drivers from:
+Magisk Base || Magisk modules and other
+https://t.me/magiskmodules22
