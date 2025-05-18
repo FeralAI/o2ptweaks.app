@@ -15,9 +15,6 @@ class MainApplication : Application() {
         AppSettings.setPropVolumeSteps(sharedPrefs, SystemUtils.getPropVolumeSteps())
 
         // Ensure app files are in place
-        if (!AppSettings.getAppFirstRun(sharedPrefs)) {
-            copyAssetFolderToFilesDir(context, "app")
-            AppSettings.setAppFirstRun(sharedPrefs, true)
-        }
+        copyAssetFolderToFilesDir(context, "app")
     }
 }
