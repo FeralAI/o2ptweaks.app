@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
@@ -12,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -23,6 +25,7 @@ fun SettingsRow(
     modifier: Modifier = Modifier,
     label: String,
     detail: String? = null,
+    notice: String? = null,
     control: @Composable () -> Unit,
 ) {
     HorizontalDivider(modifier = modifier.padding(PaddingValues(0.dp, 8.dp)))
@@ -48,6 +51,16 @@ fun SettingsRow(
                     modifier = modifier.fillMaxWidth().padding(LABEL_PADDING),
                     style = MaterialTheme.typography.bodySmall,
                     text = detail,
+                )
+            }
+            Spacer(modifier = modifier.padding(6.dp))
+            if (notice != null) {
+                Text(
+                    modifier = modifier.fillMaxWidth().padding(LABEL_PADDING),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(200, 0, 0),
+                    fontWeight = FontWeight.Bold,
+                    text = notice,
                 )
             }
         }
