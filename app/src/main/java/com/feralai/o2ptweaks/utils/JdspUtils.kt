@@ -6,7 +6,7 @@ object JdspUtils {
     const val JDSP_PACKAGE_NAME = "james.dsp"
 
     fun copyBackupFile(context: Context) {
-        val backupFile = "support/conf_files/jamesdsp_backup_o2ptweaks.backup"
+        val backupFile = "app/support/conf_files/jamesdsp_backup_o2ptweaks.backup"
         val outFile = FileUtils.getPathDownload("/jamesdsp_backup_o2ptweaks.tar.gz")
         FileUtils.copyAsset(context, backupFile, outFile)
     }
