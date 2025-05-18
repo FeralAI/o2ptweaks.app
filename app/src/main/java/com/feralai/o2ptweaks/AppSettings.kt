@@ -21,6 +21,7 @@ object AppSettings {
     const val DPI_KEY = "overrideDpi"
     const val JDSP_ENABLED_KEY = "jdspEnabled"
     const val O2P_VOLUME_FIX_KEY = "o2pSpeakerVolumePatch"
+    const val SKIP_BOOT_ANIMATION = "skipBootAnimation"
     const val VOLUME_STEPS_KEY = "volumeSteps"
 
     const val PROP_LCD_DENSITY_KEY = "propLcdDensity"
@@ -37,11 +38,13 @@ object AppSettings {
         // Save off system.prop to the Magisk module folder
         val sharedPrefs = getSharedPrefs(context)
         val dpi = getDpi(sharedPrefs)
+        val skipBootAnimation = getSkipBootAnimation(sharedPrefs)
         val volSteps = getVolumeSteps(sharedPrefs)
 
         val sb = StringBuilder()
         if (dpi > 0) { sb.appendLine("ro.sf.lcd_density=$dpi") }
         if (volSteps > 0) { sb.appendLine("ro.config.media_vol_steps=$volSteps") }
+        if (skipBootAnimation) { sb.appendLine("debug.sf.nobootanimation=1") }
 
         val propFile = "${context.filesDir}/app/support/magisk/odin2portal-tweaks/system.prop"
         FileUtils.saveFile(propFile, sb.toString())
@@ -153,6 +156,16 @@ object AppSettings {
     fun setO2PVolumeFix(sharedPrefs: SharedPreferences, value: Boolean) {
         with(sharedPrefs.edit()) {
             putBoolean(O2P_VOLUME_FIX_KEY, value)
+            apply()
+        }
+    }
+
+    fun getSkipBootAnimation(sharedPrefs: SharedPreferences): Boolean {
+        return sharedPrefs.getBoolean(SKIP_BOOT_ANIMATION, false)
+    }
+    fun setSkipBootAnimation(sharedPrefs: SharedPreferences, value: Boolean) {
+        with(sharedPrefs.edit()) {
+            putBoolean(SKIP_BOOT_ANIMATION, value)
             apply()
         }
     }

@@ -25,8 +25,6 @@ import androidx.core.content.ContextCompat
 import com.feralai.o2ptweaks.AppSettings
 import com.feralai.o2ptweaks.utils.MagiskUtil
 import com.feralai.o2ptweaks.utils.RootUtils
-import com.feralai.o2ptweaks.SupportedDevices
-import com.feralai.o2ptweaks.utils.SystemUtils
 import com.feralai.o2ptweaks.components.DropdownField
 import com.feralai.o2ptweaks.components.SettingsRow
 import com.feralai.o2ptweaks.ui.theme.o2ptweaksTheme
@@ -73,6 +71,8 @@ fun SettingsScreen(
 
     val jdspDownloadId by remember { mutableLongStateOf(0) }
     val jdspDownloadFile by remember { mutableStateOf("") }
+
+    var skipBootAnimation by remember { mutableStateOf(AppSettings.getSkipBootAnimation(sharedPrefs)) }
 
     val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
@@ -260,6 +260,7 @@ fun SettingsScreen(
                         modifier = modifier.width(BUTTON_WIDTH),
                         onClick = {
                             JdspUtils.installJdspMagiskModule(context)
+                            AppSettings.setJdspEnabled(sharedPrefs, true)
                             Toast.makeText(context, "JamesDSP Magisk Module Installed, Please Reboot", Toast.LENGTH_SHORT).show()
                             onRebootRequired(false)
                         },
@@ -352,6 +353,37 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = modifier.padding(16.dp))
+
+        Row(
+            modifier = modifier.fillMaxWidth().padding(ROW_PADDING),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start,
+        ) {
+            Text(
+                modifier = modifier.width(LABEL_WIDTH).padding(HEADING_PADDING),
+                text = "Startup",
+                color = Color(100, 100, 200),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+
+        if (isRooted) {
+            SettingsRow(
+                label = "Skip Boot Animation",
+                detail = "Disable the startup boot animation.",
+            ) {
+                Switch(
+                    checked = skipBootAnimation,
+                    onCheckedChange = {
+                        skipBootAnimation = it
+                        AppSettings.setSkipBootAnimation(sharedPrefs, it)
+                        AppSettings.save(context)
+                        onRebootRequired(false)
+                    }
+                )
+            }
+        }
     }
 
 }
