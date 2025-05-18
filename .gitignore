@@ -2,3 +2,4 @@
 .idea
 .kotlin
 app/build/
+app/release/

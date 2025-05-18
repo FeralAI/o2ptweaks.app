@@ -15,6 +15,7 @@ EZ Root requires a device that contains the "Run script as Root" functionality p
 These devices are confirmed to work:
 
 * AYN Odin2 Portal
+* Retroid Pocket 5
 * Retroid Pocket Flip 2 (SD865 version)
 * Retroid Pocket Mini (V1 & V2)
 

@@ -41,7 +41,7 @@ Running on a rooted device will make more tweaks available and allow certain exi
 
 <img src="images/userguide-tweaks-display.png" style="width: 480px">
 
-* **DPI** - Uses the `wm density` command to set the display DPI, and also sets the `ro.sf.lcd_density` build prop in the O2P Tweaks Magisk module. This setting persists between restarts without O2P Tweaks running.
+* **DPI** - Uses the `wm density` command to set the display DPI, and also sets the `ro.sf.lcd_density` system prop in the O2P Tweaks Magisk module. This setting persists between restarts without O2P Tweaks running.
 * **Animation Speed** - Adjust the speed of system animations. This sets the `animator_duration_scale`, `transition_animation_scale` and `window_animation_scale` global settings, similar to the options in the Developer menu.
 
 ### Sound Tweaks (ROOT)
@@ -50,7 +50,7 @@ Running on a rooted device will make more tweaks available and allow certain exi
 
 * **JamesDSP** - Install JamesDSP via a Magisk module instead of the typical method. This avoids the need for O2P Tweaks to run at startup, and is the recommended method for using JamesDSP on a rooted device. See [JamesDSP Setup](JAMESDSP.md) for more details.
 * **O2P Volume Fix (O2P only)** - The Odin 2 Portal lowest volume is too loud for a lot of users, so this option applies a different volume curve to the internal speakers to mitigate this issue. This will be applied via the O2P Tweaks Magisk module on boot.
-* **Volume Steps** - Adjust the number of volume steps when using the Vol- and Vol+ buttons. Higher values provide more granular volume control. Applied via the `ro.config.media_vol_steps` build prop in the O2P Tweaks Magisk module.
+* **Volume Steps** - Adjust the number of volume steps when using the Vol- and Vol+ buttons. Higher values provide more granular volume control. Applied via the `ro.config.media_vol_steps` system prop in the O2P Tweaks Magisk module.
 
 ## EZ Root
 
