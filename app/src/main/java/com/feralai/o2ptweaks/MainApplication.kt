@@ -14,10 +14,6 @@ class MainApplication : Application() {
         AppSettings.setPropLcdDensity(sharedPrefs, SystemUtils.getPropLcdDensity())
         AppSettings.setPropVolumeSteps(sharedPrefs, SystemUtils.getPropVolumeSteps())
 
-        // Make sure required files are created if device is rooted
-        if (RootUtils.isDeviceRooted)
-            AppSettings.save(context)
-
         // Ensure app files are in place
         if (!AppSettings.getAppFirstRun(sharedPrefs)) {
             copyAssetFolderToFilesDir(context, "app")
