@@ -37,8 +37,11 @@ object MagiskUtil {
             return ""
 
         // Make local copy of Magisk utils if not fully installed
-        if (!File(FileUtils.getPathAppFiles(context, "/magisk/magisk")).exists())
+        if (!File(FileUtils.getPathAppFiles(context, "/magisk/magisk")).exists()) {
+            val tmpMagisk = FileUtils.getPathAppFiles(context, "/magisk")
+            RootUtils.runRootCommand(context, "rm -rf \"$tmpMagisk\"")
             installLocalMagiskUtils(context)
+        }
 
         val tempDir = FileUtils.getPathAppFiles(context, "/magisk")
         if (File("$tempDir/magisk").exists())

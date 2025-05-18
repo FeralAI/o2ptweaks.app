@@ -75,7 +75,8 @@ object RootUtils {
             "/system/sd/xbin/su",
             "/system/bin/failsafe/su",
             "/data/local/su",
-            "/su/bin/su"
+            "/su/bin/su",
+            "/product/bin/su"
         )
         for (path in paths) {
             if (File(path).exists()) return true
