@@ -7,19 +7,18 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
@@ -48,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -184,6 +184,7 @@ fun ScreenManager(
         confirmRebootDialog = showPrompt
     }
 
+
     ModalNavigationDrawer(
         modifier = modifier,
         drawerState = drawerState,
@@ -201,9 +202,14 @@ fun ScreenManager(
                     horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Image(
+                        modifier = modifier.height(32.dp).padding(12.dp, 0.dp, 0.dp, 0.dp),
+                        painter = painterResource(id = R.drawable.app_menu_icon),
+                        contentDescription = "O2P Tweaks Icon",
+                    )
                     Text(
-                        text = menuTitleText,
-                        modifier = modifier.padding(PaddingValues(16.dp, 16.dp)),
+                        text = "$menuTitleText v$versionName",
+                        modifier = modifier.padding(PaddingValues(10.dp, 16.dp, 16.dp, 16.dp)),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
