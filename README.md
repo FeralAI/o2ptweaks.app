@@ -34,7 +34,7 @@ The emulator validates the dual-screen layout, touch mapping, and UI state. It c
 
 ## Release
 
-Release tags use `vMAJOR.MINOR.PATCH-alpha.N`, `vMAJOR.MINOR.PATCH-beta.N`, or `vMAJOR.MINOR.PATCH`. Signed releases are built by GitHub Actions and uploaded as `thortools-<tag>.apk`.
+Release tags use `vMAJOR.MINOR.PATCH-alpha.N`, `vMAJOR.MINOR.PATCH-beta.N`, or `vMAJOR.MINOR.PATCH`. Alpha releases use the automatically signed debug build and do not require repository signing secrets. Beta and stable releases use the production keystore and are uploaded as `thortools-<tag>.apk`.
 
 ## Credits and support
 

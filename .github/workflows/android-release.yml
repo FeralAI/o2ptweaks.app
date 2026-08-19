@@ -59,7 +59,7 @@ jobs:
       - name: Set up Gradle caching
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Prepare signed release version
+      - name: Prepare release version
         id: release
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
@@ -70,10 +70,6 @@ jobs:
           THORTOOLS_KEY_PASSWORD: ${{ secrets.THORTOOLS_KEY_PASSWORD }}
         run: |
           [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta)\.([1-9][0-9]*))?$ ]] || exit 1
-          test -n "$THORTOOLS_KEYSTORE_BASE64"
-          test -n "$THORTOOLS_KEYSTORE_PASSWORD"
-          test -n "$THORTOOLS_KEY_ALIAS"
-          test -n "$THORTOOLS_KEY_PASSWORD"
           release_version="${RELEASE_TAG#v}"
           numeric_version="${release_version%%-*}"
           IFS=. read -r major minor patch <<EOF
@@ -107,9 +103,6 @@ jobs:
           release_code=$((major * 10000000 + minor * 10000 + patch * 1000 + qualifier_rank))
           test "$release_code" -gt 0
           test "$release_code" -le 2147483647
-          keystore_path="$RUNNER_TEMP/thortools-release.jks"
-          printf '%s' "$THORTOOLS_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
-          echo "THORTOOLS_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
           echo "THORTOOLS_VERSION_NAME=$release_version" >> "$GITHUB_ENV"
           echo "THORTOOLS_VERSION_CODE=$release_code" >> "$GITHUB_ENV"
           release_channel="${REQUESTED_CHANNEL:-$inferred_channel}"
@@ -121,6 +114,18 @@ jobs:
             alpha:alpha|beta:beta|stable:stable) ;;
             *) exit 1 ;;
           esac
+          build_type=release
+          if [[ "$release_channel" == "alpha" ]]; then
+            build_type=debug
+          else
+            test -n "$THORTOOLS_KEYSTORE_BASE64"
+            test -n "$THORTOOLS_KEYSTORE_PASSWORD"
+            test -n "$THORTOOLS_KEY_ALIAS"
+            test -n "$THORTOOLS_KEY_PASSWORD"
+            keystore_path="$RUNNER_TEMP/thortools-release.jks"
+            printf '%s' "$THORTOOLS_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+            echo "THORTOOLS_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
+          fi
           if [[ "$release_channel" == "stable" ]]; then
             prerelease=false
           else
@@ -128,15 +133,29 @@ jobs:
           fi
           echo "channel=$release_channel" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "build_type=$build_type" >> "$GITHUB_OUTPUT"
 
-      - name: Build installable release APK
+      - name: Build alpha debug APK
+        if: steps.release.outputs.channel == 'alpha'
+        run: gradle --no-daemon --stacktrace assembleDebug
+
+      - name: Build signed release APK
+        if: steps.release.outputs.channel != 'alpha'
         env:
           THORTOOLS_KEYSTORE_PASSWORD: ${{ secrets.THORTOOLS_KEYSTORE_PASSWORD }}
           THORTOOLS_KEY_ALIAS: ${{ secrets.THORTOOLS_KEY_ALIAS }}
           THORTOOLS_KEY_PASSWORD: ${{ secrets.THORTOOLS_KEY_PASSWORD }}
         run: gradle --no-daemon --stacktrace assembleRelease
 
+      - name: Verify alpha APK
+        if: steps.release.outputs.channel == 'alpha'
+        run: |
+          release_apk="$(find app/build/outputs/apk/debug -type f -name 'thortools-*.apk' -print -quit)"
+          test -n "$release_apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$release_apk"
+
       - name: Verify signed release APK
+        if: steps.release.outputs.channel != 'alpha'
         run: |
           release_apk="$(find app/build/outputs/apk/release -type f -name 'thortools-*.apk' -print -quit)"
           test -n "$release_apk"
@@ -146,9 +165,10 @@ jobs:
         id: apk
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          BUILD_TYPE: ${{ steps.release.outputs.build_type }}
         run: |
           apk_name="thortools-${RELEASE_TAG}.apk"
-          release_apk="$(find app/build/outputs/apk/release -type f -name 'thortools-*.apk' -print -quit)"
+          release_apk="$(find "app/build/outputs/apk/$BUILD_TYPE" -type f -name 'thortools-*.apk' -print -quit)"
           test -n "$release_apk"
           cp "$release_apk" "$RUNNER_TEMP/$apk_name"
           echo "path=$RUNNER_TEMP/$apk_name" >> "$GITHUB_OUTPUT"
