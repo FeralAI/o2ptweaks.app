@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-WORKING_PATH="/storage/emulated/0/Android/data/com.feralai.o2ptweaks/files"
+WORKING_PATH="/storage/emulated/0/Android/data/dev.adrian.thortools/files"
 DOWNLOAD_PATH="/storage/emulated/0/Download"
 LOG_FILE="$WORKING_PATH/boot.restore.log"
 

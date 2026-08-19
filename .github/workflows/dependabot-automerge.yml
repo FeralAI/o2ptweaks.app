@@ -1,0 +1,48 @@
+name: Dependabot auto-merge
+
+on:
+  workflow_run:
+    workflows:
+      - ThorTools Android CI
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Find safe dependency update
+        id: dependency
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo
+            const { data: pullRequests } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner,
+              repo,
+              commit_sha: context.payload.workflow_run.head_sha
+            })
+            const pullRequest = pullRequests.find((candidate) => (
+              candidate.state === 'open' &&
+              candidate.base.ref === 'main' &&
+              candidate.user?.login === 'dependabot[bot]'
+            ))
+            if (!pullRequest) return
+            const updateTypes = [...(pullRequest.body ?? '').matchAll(/update-type:\s*version-update:semver-(patch|minor|major)/g)]
+              .map((match) => match[1])
+            if (!updateTypes.length || updateTypes.some((updateType) => updateType === 'major')) return
+            core.setOutput('number', String(pullRequest.number))
+
+      - name: Enable safe dependency auto-merge
+        if: steps.dependency.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.dependency.outputs.number }}
+        run: gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --auto --squash

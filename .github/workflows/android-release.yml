@@ -1,0 +1,237 @@
+name: Android release package
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to create
+        required: true
+        type: string
+      channel:
+        description: Release channel
+        required: true
+        default: alpha
+        type: choice
+        options:
+          - alpha
+          - beta
+          - stable
+
+permissions:
+  contents: write
+
+env:
+  GRADLE_VERSION: '8.13'
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android build dependencies
+        run: |
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0" "cmake;3.22.1" "ndk;27.3.13750724"
+
+      - name: Install Gradle
+        run: |
+          curl --fail --silent --show-error --location "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" --output "$RUNNER_TEMP/gradle.zip"
+          unzip -q "$RUNNER_TEMP/gradle.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
+
+      - name: Set up Gradle caching
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Prepare signed release version
+        id: release
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          REQUESTED_CHANNEL: ${{ inputs.channel || '' }}
+          THORTOOLS_KEYSTORE_BASE64: ${{ secrets.THORTOOLS_KEYSTORE_BASE64 }}
+          THORTOOLS_KEYSTORE_PASSWORD: ${{ secrets.THORTOOLS_KEYSTORE_PASSWORD }}
+          THORTOOLS_KEY_ALIAS: ${{ secrets.THORTOOLS_KEY_ALIAS }}
+          THORTOOLS_KEY_PASSWORD: ${{ secrets.THORTOOLS_KEY_PASSWORD }}
+        run: |
+          case "$RELEASE_TAG" in
+            v[0-9]*.[0-9]*.[0-9]*|v[0-9]*.[0-9]*.[0-9]*-[a-z]*.[0-9]*) ;;
+            *) exit 1 ;;
+          esac
+          test -n "$THORTOOLS_KEYSTORE_BASE64"
+          test -n "$THORTOOLS_KEYSTORE_PASSWORD"
+          test -n "$THORTOOLS_KEY_ALIAS"
+          test -n "$THORTOOLS_KEY_PASSWORD"
+          release_version="${RELEASE_TAG#v}"
+          numeric_version="${release_version%%-*}"
+          IFS=. read -r major minor patch <<EOF
+          $numeric_version
+          EOF
+          case "$major:$minor:$patch" in
+            *[!0-9:]*|*::*|:*|*:) exit 1 ;;
+          esac
+          test "$minor" -le 999
+          test "$patch" -le 999
+          release_suffix="${release_version#"$numeric_version"}"
+          prerelease_number=0
+          case "$release_suffix" in
+            "") inferred_channel=stable ;;
+            -alpha.*) inferred_channel=alpha; prerelease_number="${release_suffix#-alpha.}" ;;
+            -beta.*) inferred_channel=beta; prerelease_number="${release_suffix#-beta.}" ;;
+            *) exit 1 ;;
+          esac
+          if [[ -n "$release_suffix" ]]; then
+            case "$prerelease_number" in
+              ''|*[!0-9]*) exit 1 ;;
+            esac
+            test "$prerelease_number" -ge 1
+            test "$prerelease_number" -le 99
+          fi
+          case "$inferred_channel" in
+            alpha) qualifier_rank="$prerelease_number" ;;
+            beta) qualifier_rank=$((100 + prerelease_number)) ;;
+            stable) qualifier_rank=200 ;;
+          esac
+          release_code=$((major * 10000000 + minor * 10000 + patch * 1000 + qualifier_rank))
+          test "$release_code" -gt 0
+          test "$release_code" -le 2147483647
+          keystore_path="$RUNNER_TEMP/thortools-release.jks"
+          printf '%s' "$THORTOOLS_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          echo "THORTOOLS_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
+          echo "THORTOOLS_VERSION_NAME=$release_version" >> "$GITHUB_ENV"
+          echo "THORTOOLS_VERSION_CODE=$release_code" >> "$GITHUB_ENV"
+          release_channel="${REQUESTED_CHANNEL:-$inferred_channel}"
+          case "$release_channel" in
+            alpha|beta|stable) ;;
+            *) exit 1 ;;
+          esac
+          case "$release_channel:$inferred_channel" in
+            alpha:alpha|beta:beta|stable:stable) ;;
+            *) exit 1 ;;
+          esac
+          if [[ "$release_channel" == "stable" ]]; then
+            prerelease=false
+          else
+            prerelease=true
+          fi
+          echo "channel=$release_channel" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+      - name: Build installable release APK
+        env:
+          THORTOOLS_KEYSTORE_PASSWORD: ${{ secrets.THORTOOLS_KEYSTORE_PASSWORD }}
+          THORTOOLS_KEY_ALIAS: ${{ secrets.THORTOOLS_KEY_ALIAS }}
+          THORTOOLS_KEY_PASSWORD: ${{ secrets.THORTOOLS_KEY_PASSWORD }}
+        run: gradle --no-daemon --stacktrace assembleRelease
+
+      - name: Verify signed release APK
+        run: |
+          release_apk="$(find app/build/outputs/apk/release -type f -name 'thortools-*.apk' -print -quit)"
+          test -n "$release_apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$release_apk"
+
+      - name: Stage Obtainium APK
+        id: apk
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          apk_name="thortools-${RELEASE_TAG}.apk"
+          release_apk="$(find app/build/outputs/apk/release -type f -name 'thortools-*.apk' -print -quit)"
+          test -n "$release_apk"
+          cp "$release_apk" "$RUNNER_TEMP/$apk_name"
+          echo "path=$RUNNER_TEMP/$apk_name" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        id: notes
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          previous_tag=""
+          if [[ "${GITHUB_REF_TYPE:-}" == "tag" && "$RELEASE_TAG" == "${GITHUB_REF_NAME:-}" ]]; then
+            previous_tag="$(git describe --tags --abbrev=0 "$RELEASE_TAG^" 2>/dev/null || true)"
+          else
+            previous_tag="$(git describe --tags --abbrev=0 HEAD 2>/dev/null || true)"
+            if [[ "$previous_tag" == "$RELEASE_TAG" ]]; then
+              previous_tag="$(git describe --tags --abbrev=0 "$RELEASE_TAG^" 2>/dev/null || true)"
+            fi
+          fi
+          notes_path="$RUNNER_TEMP/thortools-release-notes.md"
+          features_path="$RUNNER_TEMP/thortools-release-features.md"
+          fixes_path="$RUNNER_TEMP/thortools-release-fixes.md"
+          other_path="$RUNNER_TEMP/thortools-release-other.md"
+          : > "$features_path"
+          : > "$fixes_path"
+          : > "$other_path"
+          commit_range="HEAD"
+          if [[ -n "$previous_tag" ]]; then
+            commit_range="$previous_tag..HEAD"
+          fi
+          while IFS=$'\t' read -r subject commit; do
+            [[ -z "$subject" ]] && continue
+            commit_type="$(printf '%s' "$subject" | sed -E 's/^([a-z]+)(\([^)]*\))?!?:.*/\1/')"
+            commit_title="$(printf '%s' "$subject" | sed -E 's/^[a-z]+(\([^)]*\))?!?:[[:space:]]*//')"
+            commit_link="https://${GITHUB_SERVER_URL#https://}/${GITHUB_REPOSITORY}/commit/$commit"
+            line="- $commit_title ([${commit:0:7}]($commit_link))"
+            case "$commit_type" in
+              feat) printf '%s\n' "$line" >> "$features_path" ;;
+              fix) printf '%s\n' "$line" >> "$fixes_path" ;;
+              *) printf '%s\n' "$line" >> "$other_path" ;;
+            esac
+          done < <(git log --no-merges --format='%s%x09%H' "$commit_range")
+          {
+            echo "## What's changed"
+            for category_path in "$features_path" "$fixes_path" "$other_path"; do
+              case "$category_path" in
+                "$features_path") category_title="Features" ;;
+                "$fixes_path") category_title="Fixes" ;;
+                *) category_title="Other Changes" ;;
+              esac
+              if [[ -s "$category_path" ]]; then
+                echo
+                echo "### $category_title"
+                cat "$category_path"
+              fi
+            done
+          } > "$notes_path"
+          echo "path=$notes_path" >> "$GITHUB_OUTPUT"
+          echo "previous_tag=$previous_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: thortools-release
+          path: ${{ steps.apk.outputs.path }}
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          RELEASE_NOTES_PATH: ${{ steps.notes.outputs.path }}
+          RELEASE_APK_PATH: ${{ steps.apk.outputs.path }}
+          RELEASE_PRERELEASE: ${{ steps.release.outputs.prerelease }}
+        run: |
+          release_args=(
+            --repo "$GITHUB_REPOSITORY"
+            --verify-tag
+            --title "$RELEASE_TAG"
+            --notes-file "$RELEASE_NOTES_PATH"
+            --fail-on-no-commits
+          )
+          if [[ "$RELEASE_PRERELEASE" == "true" ]]; then
+            release_args+=(--prerelease)
+          fi
+          gh release create "$RELEASE_TAG" "$RELEASE_APK_PATH" "${release_args[@]}"

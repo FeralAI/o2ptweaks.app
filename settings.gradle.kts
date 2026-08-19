@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "o2ptweaks"
+rootProject.name = "thortools"
 include(":app")
  

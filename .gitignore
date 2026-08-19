@@ -1,5 +1,7 @@
 .gradle
 .idea
 .kotlin
+.android
 app/build/
 app/release/
+local.properties

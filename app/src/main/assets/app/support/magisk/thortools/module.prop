@@ -1,0 +1,6 @@
+id=thortools
+name=ThorTools System Tweaks
+version=0.1.0-alpha.1
+versionCode=1
+author=castdrian
+description=System properties managed by ThorTools for the AYN Thor

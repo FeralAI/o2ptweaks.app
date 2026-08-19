@@ -1,57 +1,25 @@
-<h1>O2P Tweaks User Guide</h1>
+# ThorTools User Guide
 
-Jump to section:
+ThorTools is designed around the AYN Thor's two displays. The upper display shows device state, capability checks, operation progress, results, and recovery information. The lower display contains the controls and confirmations.
 
-- [System Info](#system-info)
-- [Tweaks](#tweaks)
-  - [Display Tweaks](#display-tweaks)
-  - [Sound Tweaks](#sound-tweaks)
-- [Root Tweaks](#root-tweaks)
-  - [Display Tweaks (ROOT)](#display-tweaks-root)
-  - [Sound Tweaks (ROOT)](#sound-tweaks-root)
-- [EZ Root](#ez-root)
+## Status
 
-## System Info
-
-<img src="images/userguide-system-info.png" style="width: 480px">
-
-The System Info page provides some useful information about the device hardware and software.
+The Status section reports the detected Thor variant, raw model information, firmware, build, active slot, battery, kernel, root state, Magisk state, and available boot partitions. Refresh before starting a sensitive operation.
 
 ## Tweaks
 
-### Display Tweaks
+Display density and animation speed are applied through Android system settings. On a rooted Thor, volume steps and boot-animation behavior are persisted through the ThorTools Magisk module and require a reboot when the dashboard says so.
 
-<img src="images/userguide-tweaks-display.png" style="width: 480px">
-
-* **DPI** - Uses the `wm density` command to set the display DPI. This setting persists between restarts without O2P Tweaks running.
-* **Animation Speed** - Adjust the speed of system animations. This sets the `animator_duration_scale`, `transition_animation_scale` and `window_animation_scale` global settings, similar to the options in the Developer menu.
-
-### Sound Tweaks
-
-<img src="images/userguide-tweaks-sound.png" style="width: 480px">
-
-* **JamesDSP** - Toggle enabling or disabling loading the JamesDSP library via the "Run script as Root" functionality. JamesDSP Manager app is required and presented as an install option on this screen. See [JamesDSP Setup](JAMESDSP.md) for more details.
-* **O2P Volume Fix (O2P only)** - The Odin 2 Portal lowest volume is too loud for a lot of users, so this option applies a different volume curve to the internal speakers to mitigate this issue.
-
-## Root Tweaks
-
-Running on a rooted device will make more tweaks available and allow certain existing tweaks to be applied boot instead of runtime. This is done by dynamically generating a Magisk module with the relevant options, which is then loaded on startup.
-
-### Display Tweaks (ROOT)
-
-<img src="images/userguide-tweaks-display.png" style="width: 480px">
-
-* **DPI** - Uses the `wm density` command to set the display DPI, and also sets the `ro.sf.lcd_density` system prop in the O2P Tweaks Magisk module. This setting persists between restarts without O2P Tweaks running.
-* **Animation Speed** - Adjust the speed of system animations. This sets the `animator_duration_scale`, `transition_animation_scale` and `window_animation_scale` global settings, similar to the options in the Developer menu.
-
-### Sound Tweaks (ROOT)
-
-<img src="images/userguide-tweaks-sound-root.png" style="width: 480px">
-
-* **JamesDSP** - Install JamesDSP via a Magisk module instead of the typical method. This avoids the need for O2P Tweaks to run at startup, and is the recommended method for using JamesDSP on a rooted device. See [JamesDSP Setup](JAMESDSP.md) for more details.
-* **O2P Volume Fix (O2P only)** - The Odin 2 Portal lowest volume is too loud for a lot of users, so this option applies a different volume curve to the internal speakers to mitigate this issue. This will be applied via the O2P Tweaks Magisk module on boot.
-* **Volume Steps** - Adjust the number of volume steps when using the Vol- and Vol+ buttons. Higher values provide more granular volume control. Applied via the `ro.config.media_vol_steps` system prop in the O2P Tweaks Magisk module.
+The controls are disabled when Thor identity, the privileged root service, or root access is missing.
 
 ## EZ Root
 
-Check out the [EZ Root guide](EZROOT.md) for details on usage.
+The root flow checks the active slot and partition layout before every backup, patch, flash, and restore. It requires a 35% battery level, a non-empty image, and an explicit confirmation on the lower display for writes. Cached stock and patched images are hashed with SHA-256 and shown on the dashboard.
+
+## Recovery
+
+Restore stock before installing an OTA. If the app is interrupted, the next launch shows the interrupted operation in the dashboard without repeating it. Keep the Download-folder copies of the stock images until the Thor has rebooted successfully.
+
+## Scope
+
+ThorTools v1 does not include the Odin 2 Portal speaker curve or JamesDSP assets. Those features require Thor-specific audio measurement and physical validation.

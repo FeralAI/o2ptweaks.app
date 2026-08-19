@@ -1,0 +1,125 @@
+name: ThorTools Android CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thortools-android-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GRADLE_VERSION: '8.13'
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: '15859902'
+      - name: Install Android build dependencies
+        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
+      - name: Install Gradle
+        run: |
+          curl --fail --silent --show-error --location "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" --output "$RUNNER_TEMP/gradle.zip"
+          unzip -q "$RUNNER_TEMP/gradle.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
+      - name: Set up Gradle caching
+        uses: gradle/actions/setup-gradle@v6
+      - name: Run unit tests, lint, and build
+        run: gradle --no-daemon --stacktrace --console=plain :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+      - name: Upload JUnit results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: thortools-test-results
+          path: |
+            app/build/test-results/testDebugUnitTest
+            app/build/reports/tests/testDebugUnitTest
+          if-no-files-found: warn
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: thortools-lint
+          path: app/build/reports/lint-results-debug.html
+          if-no-files-found: warn
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: thortools-debug
+          path: app/build/outputs/apk/debug/thortools-*-debug.apk
+
+  instrumented:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: '15859902'
+      - name: Install Thor AVD dependencies
+        run: sdkmanager "platform-tools" "emulator" "platforms;android-34" "build-tools;35.0.0" "system-images;android-34;google_apis;x86_64"
+      - name: Start Thor AVD and run instrumented tests
+        env:
+          AYN_THOR_ALLOW_STOCK_EMULATOR: '1'
+          AYN_THOR_GPU_MODE: swiftshader
+          AYN_THOR_WINDOW_SCALE: '1'
+        run: |
+          export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          log_path="$RUNNER_TEMP/thor-avd.log"
+          ./scripts/run-ayn-thor-avd.sh -no-window > "$log_path" 2>&1 &
+          emulator_pid=$!
+          trap 'kill "$emulator_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 120); do
+            if adb -s emulator-5554 get-state 2>/dev/null | grep -q '^device$'; then
+              display_info="$(adb -s emulator-5554 shell dumpsys display 2>/dev/null || true)"
+              if printf '%s\n' "$display_info" | grep -q '1920, 1080' && printf '%s\n' "$display_info" | grep -q '1240, 1080'; then
+                break
+              fi
+            fi
+            sleep 1
+          done
+          adb -s emulator-5554 shell dumpsys display | grep -q '1920, 1080'
+          adb -s emulator-5554 shell dumpsys display | grep -q '1240, 1080'
+          ./gradlew --no-daemon --stacktrace --console=plain connectedDebugAndroidTest
+      - name: Upload Thor AVD log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: thortools-thor-avd-log
+          path: ${{ runner.temp }}/thor-avd.log
+          if-no-files-found: warn
+      - name: Upload instrumented test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: thortools-instrumented-reports
+          path: |
+            app/build/outputs/androidTest-results/connected
+            app/build/reports/androidTests/connected
+          if-no-files-found: warn

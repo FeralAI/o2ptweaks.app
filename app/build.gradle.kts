@@ -6,37 +6,56 @@ plugins {
 }
 
 android {
-    namespace = "com.feralai.o2ptweaks"
-    compileSdk = 35
+    namespace = "dev.adrian.thortools"
+    compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.feralai.o2ptweaks"
+        applicationId = "dev.adrian.thortools"
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3"
+        versionCode = System.getenv("THORTOOLS_VERSION_CODE")?.toIntOrNull() ?: 10001
+        versionName = System.getenv("THORTOOLS_VERSION_NAME") ?: "0.1.0-alpha.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("THORTOOLS_KEYSTORE_PATH")
+            if (!keystorePath.isNullOrBlank()) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("THORTOOLS_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("THORTOOLS_KEY_ALIAS")
+                keyPassword = System.getenv("THORTOOLS_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.findByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
     }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
     buildFeatures {
+        buildConfig = true
         compose = true
         viewBinding = true
     }
@@ -46,7 +65,7 @@ android {
         variant.outputs
             .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
             .forEach { output ->
-                val outputFileName = "O2P_Tweaks_${variant.versionName}_${variant.buildType.name}.apk"
+                val outputFileName = "thortools-${variant.versionName}-${variant.buildType.name}.apk"
                 output.outputFileName = outputFileName
             }
     }

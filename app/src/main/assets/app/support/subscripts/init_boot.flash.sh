@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-WORKING_PATH="/storage/emulated/0/Android/data/com.feralai.o2ptweaks/files"
+WORKING_PATH="/storage/emulated/0/Android/data/dev.adrian.thortools/files"
 LOG_FILE="$WORKING_PATH/init_boot.flash.log"
 
 echo "Flash rooted init_boot.img starting..." > $LOG_FILE

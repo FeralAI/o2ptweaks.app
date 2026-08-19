@@ -1,38 +1,44 @@
-# <img src="docs/images/logo.webp" style="width: 24px;"> O2P Tweaks App
+# ThorTools
 
-O2P Tweaks is an application that leverages the temporary root functionality of some devices to apply fixes and enhancements to Android handhelds.
+ThorTools is a Thor-first Android utility for the AYN Thor dual-screen handheld. It provides device diagnostics, safe system settings, Magisk-backed boot property changes, and an EZ Root workflow for Thor boot partitions.
 
-This app was originally designed for the Odin2 Portal. Most features work on other Android handhelds that meet requirements, but YMMV.
+## Supported hardware
+
+ThorTools recognizes AYN Thor Lite, Base, Pro, and Max variants. The upper display is 1920 × 1080 at 120 Hz and the lower display is 1240 × 1080 at 60 Hz. The upper panel is a read-only status dashboard; the lower panel owns navigation, actions, and confirmations.
+
+The app enters diagnostics-only mode on other devices or when the Thor privileged root service is unavailable. Every image operation rechecks the current active slot, partition nodes, Magisk state, battery level, and image size before it runs.
 
 ## Features
 
-* [Install JamesDSP](docs/JAMESDSP.md) for system-wide audio equalization (O2P only)
-  * Includes JamesDSP backup with with tuned EQ curve for the Odin 2 Portal speaker 
-* Adjusted volume curve for speaker output for lower minimum volume (O2P only)
-* Adjust system DPI
-* Adjust system animation speed
-* System info page with software and hardware details for firmware, battery, etc
-* [EZ Root](docs/EZROOT.md) feature lets you root your device, on your device, without a PC!
+- Thor hardware, firmware, battery, slot, root, Magisk, and partition diagnostics
+- EZ Root backup, Magisk patch, active-slot flash, stock restore, and cache management
+- DPI and animation speed controls
+- Rooted volume-step control
+- Optional boot-animation disable through a ThorTools Magisk module
+- SHA-256 hashes for cached stock and patched images
+- Dual-screen AYN Thor AVD and patched emulator compositor
 
-If running a rooted device, O2P Tweaks will apply tweaks via an auto-generated Magisk module, and some new options become available:
+Thor-specific audio EQ and JamesDSP payloads are intentionally not included until they have been measured and validated on physical Thor hardware.
 
-* Install JamesDSP via Magisk module (compatible with more devices)
-* Adjust system DPI at boot instead of runtime (fixes some UI scaling issues)
-* Set the number of volume steps for more granular volume control
-* Disable boot animation for quicker startup time
+## Build and run
 
-## Usage
+```sh
+./scripts/setup-android.sh
+./scripts/create-ayn-thor-avd.sh
+AEMU_SOURCE_ROOT=/path/to/aemu ./scripts/build-ayn-thor-emulator-overlay.sh
+./scripts/install-ayn-thor-emulator-overlay.sh
+./scripts/run-ayn-thor-avd.sh
+ANDROID_HOME=/path/to/android-sdk ./gradlew assembleDebug
+```
 
-Download the latest release to your Android device and install.
+The emulator validates the dual-screen layout, touch mapping, and UI state. It cannot validate real root services or partition writes. Keep `AYN_THOR_ALLOW_STOCK_EMULATOR=1` limited to UI diagnostics when the patched overlay is unavailable.
 
-When prompted, allow notifications. This allows O2P Tweaks to run the tweaks on system startup.
+## Release
 
-Check out these pages for more details:
+Release tags use `vMAJOR.MINOR.PATCH-alpha.N`, `vMAJOR.MINOR.PATCH-beta.N`, or `vMAJOR.MINOR.PATCH`. Signed releases are built by GitHub Actions and uploaded as `thortools-<tag>.apk`.
 
-* [User Guide](docs/USERGUIDE.md)
-* [JamesDSP Setup](docs/JAMESDSP.md)
-* [EZ Root Guide](docs/EZROOT.md)
+## Credits and support
 
-## Credits/License:
+ThorTools preserves the upstream history and GPLv2 attribution from [FeralAI/o2ptweaks.app](https://github.com/FeralAI/o2ptweaks.app).
 
-The initial release of this app is based on the [jdsp4rp5.app](https://github.com/kokoko3k/jdsp4rp5.app) created by kokoko3k, and inherits the GNU General Public License v2.0.
+Support the project through [GitHub Sponsors](https://github.com/sponsors/castdrian) or [Ko-fi](https://ko-fi.com/castdrian).

@@ -1,0 +1,154 @@
+name: Build latest AYN Thor emulator overlay
+
+on:
+  workflow_dispatch:
+    inputs:
+      emulator_ref:
+        description: Android Emulator manifest branch
+        required: true
+        default: emu-main-dev
+        type: string
+  schedule:
+    - cron: '17 4 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ayn-thor-emulator-overlay
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Reclaim runner disk
+        run: |
+          df -h /
+          xcode_app=""
+          while IFS= read -r candidate; do
+            if [[ -d "$candidate/Contents/Developer" ]]; then
+              xcode_app="$candidate"
+              break
+            fi
+          done < <(find /Applications -maxdepth 1 -type d -name 'Xcode*.app' -print)
+          test -n "$xcode_app"
+          while IFS= read -r candidate; do
+            if [[ "$candidate" != "$xcode_app" ]]; then
+              sudo rm -rf "$candidate"
+            fi
+          done < <(find /Applications -maxdepth 1 -type d -name 'Xcode*.app' -print)
+          sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes
+          sudo rm -rf /Applications/Android\ Studio.app
+          sudo rm -rf /Applications/Visual\ Studio\ Code.app
+          sudo rm -rf /Applications/Google\ Chrome.app
+          sudo rm -rf /Applications/Firefox.app
+          rm -rf "$HOME/Library/Developer/Xcode/DerivedData"
+          rm -rf "$HOME/Library/Caches/Homebrew"
+          rm -rf "$HOME/Library/Android/sdk"
+          rm -rf "$HOME/hostedtoolcache"
+          sudo xcode-select --switch "$xcode_app/Contents/Developer"
+          xcodebuild -version
+          df -h /
+
+      - name: Download Android Emulator source
+        env:
+          EMULATOR_REF: ${{ inputs.emulator_ref || 'emu-main-dev' }}
+        run: |
+          source_root="$RUNNER_TEMP/aemu-$GITHUB_RUN_ID"
+          rm -rf "$source_root"
+          mkdir -p "$source_root"
+          curl --fail --silent --show-error --location https://storage.googleapis.com/git-repo-downloads/repo --output "$RUNNER_TEMP/repo"
+          chmod +x "$RUNNER_TEMP/repo"
+          cd "$source_root"
+          "$RUNNER_TEMP/repo" init -u https://android.googlesource.com/platform/manifest -b "$EMULATOR_REF" --depth=1 --partial-clone --clone-filter=blob:limit=1M --no-use-superproject --groups=default,platform-darwin,pdk
+          projects=(
+            external/qemu
+            external/abseil-cpp
+            external/dtc
+            external/zlib
+            external/protobuf
+            external/libpng
+            external/libslirp
+            external/boringssl
+            external/tink
+            external/crashpad
+            external/google-breakpad
+            external/googletest
+            external/regex-re2
+            external/libusb
+            external/curl
+            external/lz4
+            external/rapidjson
+            external/mesa3d
+            external/wpa_supplicant_8
+            external/google-benchmark
+            external/flex
+            external/m4
+            external/nasm
+            external/glib
+            external/astc-codec
+            external/tinyobjloader
+            external/webrtc
+            external/cares
+            external/grpc
+            external/flatbuffers
+            external/angle
+            external/gfxstream-protocols
+            hardware/google/aemu
+            hardware/google/gfxstream
+            device/google/cuttlefish
+            prebuilts/clang/host/darwin-x86
+            prebuilts/cmake/darwin-x86
+            prebuilts/ninja/darwin-x86
+            prebuilts/python/darwin-x86
+            prebuilts/android-emulator-build/common
+            prebuilts/android-emulator-build/qemu-android-deps
+            prebuilts/android-emulator-build/qt
+            tools/netsim
+            tools/rootcanal
+          )
+          "$RUNNER_TEMP/repo" sync -c -j2 --no-clone-bundle --no-tags --optimized-fetch "${projects[@]}"
+          df -h /
+          printf '%s' "$source_root" > "$RUNNER_TEMP/aemu-source-root"
+
+      - name: Build patched QEMU
+        run: |
+          source_root="$(cat "$RUNNER_TEMP/aemu-source-root")"
+          qemu_root="$source_root/external/qemu"
+          git -C "$qemu_root" apply --unidiff-zero --check "$GITHUB_WORKSPACE/tools/android-emulator/ayn-thor-single-window.patch"
+          git -C "$qemu_root" apply --unidiff-zero "$GITHUB_WORKSPACE/tools/android-emulator/ayn-thor-single-window.patch"
+          grep -q -- '-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_FAST' "$qemu_root/CMakeLists.txt"
+          sed -i '' 's/-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_FAST/-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_NONE/' "$qemu_root/CMakeLists.txt"
+          sdk_toolchain_script="$qemu_root/android/scripts/unix/gen-android-sdk-toolchain.sh"
+          grep -q 'OSX_SDK_SUPPORTED="13.3 15.2' "$sdk_toolchain_script"
+          sed -i '' 's/OSX_SDK_SUPPORTED="13.3 15.2/OSX_SDK_SUPPORTED="13.3 15.1 15.2/' "$sdk_toolchain_script"
+          find "$source_root" -type f -name .git -delete
+          find "$source_root" -type d -name .git -prune -exec rm -rf {} +
+          rm -rf "$source_root/.repo"
+          "$qemu_root/android/rebuild.sh" --target darwin_aarch64 --ccache none --task configure --out "$source_root/objs-thortools"
+          ninja_binary="$source_root/prebuilts/ninja/darwin-x86/ninja"
+          "$ninja_binary" -C "$source_root/objs-thortools" qemu-system-aarch64 qemu-system-aarch64-headless gfxstream_backend
+          qemu_binary="$(find "$source_root/objs-thortools" -type f -name qemu-system-aarch64 -print -quit)"
+          qemu_headless_binary="$(find "$source_root/objs-thortools" -type f -name qemu-system-aarch64-headless -print -quit)"
+          gfxstream_backend="$source_root/objs-thortools/lib64/libgfxstream_backend.dylib"
+          test -n "$qemu_binary"
+          test -n "$qemu_headless_binary"
+          test -f "$gfxstream_backend"
+          mkdir -p "$RUNNER_TEMP/ayn-thor-emulator-overlay/qemu/darwin-aarch64"
+          mkdir -p "$RUNNER_TEMP/ayn-thor-emulator-overlay/lib64"
+          cp "$qemu_binary" "$RUNNER_TEMP/ayn-thor-emulator-overlay/qemu/darwin-aarch64/qemu-system-aarch64"
+          cp "$qemu_headless_binary" "$RUNNER_TEMP/ayn-thor-emulator-overlay/qemu/darwin-aarch64/qemu-system-aarch64-headless"
+          cp "$gfxstream_backend" "$RUNNER_TEMP/ayn-thor-emulator-overlay/lib64/libgfxstream_backend.dylib"
+
+      - name: Upload patched emulator overlay
+        uses: actions/upload-artifact@v7
+        with:
+          name: ayn-thor-emulator-overlay-darwin-aarch64
+          path: ${{ runner.temp }}/ayn-thor-emulator-overlay
+          retention-days: 30
