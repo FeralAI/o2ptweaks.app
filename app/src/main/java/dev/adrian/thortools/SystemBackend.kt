@@ -10,6 +10,7 @@ import dev.adrian.thortools.utils.RootUtils
 import dev.adrian.thortools.utils.SystemUtils
 import dev.adrian.thortools.utils.FileUtils
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -118,7 +119,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             initBootAvailable = initBoot,
             bootAvailable = boot,
             backupDestinationWritable = backupDestination,
-            backupAvailable = PatchUtils.checkBootBackupExists(context),
+            backupAvailable = PatchUtils.checkActiveSlotBackupExists(context),
             patchedBackupAvailable = PatchUtils.checkBootMagiskExists(context),
             operation = operation,
         )
@@ -237,7 +238,13 @@ class ThorSession(
         persistJournal(running)
         snapshot = backend.snapshot(running)
         scope.launch {
-            val result = withContext(Dispatchers.IO) { backend.perform(operation, argument) }
+            val result = try {
+                withContext(Dispatchers.IO) { backend.perform(operation, argument) }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                OperationResult(false, error.message?.takeIf { it.isNotBlank() } ?: "The operation failed")
+            }
             val finished = OperationState(
                 operation,
                 if (result.success) OperationStatus.SUCCESS else OperationStatus.FAILURE,

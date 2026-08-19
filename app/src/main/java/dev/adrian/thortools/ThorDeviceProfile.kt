@@ -59,7 +59,7 @@ object DeviceProfile {
     const val LOWER_DIAGONAL_MILLIMETRES = 99.6f
     const val LOWER_MINIMUM_TEXT_SP = 18f
 
-    private val thorPattern = Regex("(^|\\s)(ayn\\s+)?thor(\\s+(lite|base|pro|max))?(\\s|$)")
+    private val thorPattern = Regex("(^|\\s)(ayn\\s*)?thor(\\s+(lite|base|pro|max))?(\\s|$)")
 
     fun detect(properties: DeviceProperties): ThorDeviceProfile {
         val searchable = listOf(
@@ -87,8 +87,7 @@ object DeviceProfile {
     private fun String.normalized(): String = lowercase().replace('_', ' ').replace('-', ' ')
 
     fun isThorLowerDisplay(widthPixels: Int, heightPixels: Int): Boolean =
-        (widthPixels == LOWER_WIDTH_PIXELS && heightPixels == LOWER_HEIGHT_PIXELS) ||
-            (widthPixels == LOWER_HEIGHT_PIXELS && heightPixels == LOWER_WIDTH_PIXELS)
+        widthPixels == LOWER_WIDTH_PIXELS && heightPixels == LOWER_HEIGHT_PIXELS
 
     fun displayKind(widthPixels: Int, heightPixels: Int): String = if (
         widthPixels <= 1400 && heightPixels >= 900 && widthPixels.toFloat() / heightPixels < 1.4f

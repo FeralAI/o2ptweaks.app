@@ -79,7 +79,8 @@ object RootUtils {
     fun runRootScript(context: Context, script: String): String? {
         val filesPath = File(context.filesDir, ASSET_SUBFOLDER).absolutePath
         val logPath = getLogFile(context)?.absolutePath ?: return null
-        val command = "sh $filesPath/support/subscripts/$script $filesPath > $logPath"
+        val workingPath = context.getExternalFilesDir(null)?.absolutePath ?: return null
+        val command = "THORTOOLS_WORKING_PATH=\"$workingPath\" sh $filesPath/support/subscripts/$script $filesPath > $logPath; printf '%s' $?"
         return RootExec().executeAsRoot(command).getOrNull()
     }
 

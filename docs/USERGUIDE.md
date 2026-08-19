@@ -22,4 +22,4 @@ Restore stock before installing an OTA. If the app is interrupted, the next laun
 
 ## Scope
 
-ThorTools v1 does not include the Odin 2 Portal speaker curve or JamesDSP assets. Those features require Thor-specific audio measurement and physical validation.
+ThorTools v1 does not include audio changes. Those features require Thor-specific audio measurement and physical validation.

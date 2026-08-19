@@ -18,7 +18,7 @@ The app enters diagnostics-only mode on other devices or when the Thor privilege
 - SHA-256 hashes for cached stock and patched images
 - Dual-screen AYN Thor AVD and patched emulator compositor
 
-Thor-specific audio EQ and JamesDSP payloads are intentionally not included until they have been measured and validated on physical Thor hardware.
+Thor-specific audio changes are intentionally deferred until they have been measured and validated on physical Thor hardware.
 
 ## Build and run
 
@@ -26,7 +26,6 @@ Thor-specific audio EQ and JamesDSP payloads are intentionally not included unti
 ./scripts/setup-android.sh
 ./scripts/create-ayn-thor-avd.sh
 AEMU_SOURCE_ROOT=/path/to/aemu ./scripts/build-ayn-thor-emulator-overlay.sh
-./scripts/install-ayn-thor-emulator-overlay.sh
 ./scripts/run-ayn-thor-avd.sh
 ANDROID_HOME=/path/to/android-sdk ./gradlew assembleDebug
 ```

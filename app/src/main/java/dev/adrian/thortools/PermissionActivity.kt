@@ -16,14 +16,11 @@ class PermissionActivity : AppCompatActivity() {
             ActivityResultContracts.RequestPermission()
         ) { isGranted: Boolean ->
             if (isGranted) {
-                // Permesso concesso, avvia MainActivity
                 startActivity(Intent(this, MainActivity::class.java))
             } else {
-                // Permesso negato, mostra un messaggio o gestisci la situazione
-                // Per esempio, puoi chiudere l'app o mostrare una spiegazione
-                finish() // Chiude l'activity se il permesso è negato
+                startActivity(Intent(this, MainActivity::class.java))
             }
-            finish() // Chiude PermissionActivity dopo aver gestito il permesso
+            finish()
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,21 +32,17 @@ class PermissionActivity : AppCompatActivity() {
                     this,
                     Manifest.permission.POST_NOTIFICATIONS
                 ) == PackageManager.PERMISSION_GRANTED -> {
-                    // Permesso già concesso, avvia MainActivity direttamente
                     startActivity(Intent(this, MainActivity::class.java))
-                    finish() // Chiude PermissionActivity
+                    finish()
                 }
                 shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
-                    // Spiega all'utente perché serve il permesso (opzionale, ma consigliato)
                     requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
                 else -> {
-                    // Richiedi il permesso
                     requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
         } else {
-            // Su versioni precedenti a Android 13, avvia direttamente MainActivity
             startActivity(Intent(this, MainActivity::class.java))
             finish()
         }

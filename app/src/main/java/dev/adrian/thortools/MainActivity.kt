@@ -81,7 +81,7 @@ class MainActivity : ComponentActivity() {
                 DeviceProfile.isThorLowerDisplay(candidate.mode.physicalWidth, candidate.mode.physicalHeight)
         }
         if (display == null) {
-            hasThorLowerDisplay = false
+            dismissSecondaryDisplay()
             return
         }
         hasThorLowerDisplay = true

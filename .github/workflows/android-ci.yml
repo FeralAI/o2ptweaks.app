@@ -83,7 +83,7 @@ jobs:
         with:
           cmdline-tools-version: '15859902'
       - name: Install Thor AVD dependencies
-        run: sdkmanager "platform-tools" "emulator" "platforms;android-34" "build-tools;35.0.0" "system-images;android-34;google_apis;x86_64"
+        run: sdkmanager "platform-tools" "emulator" "platforms;android-34" "platforms;android-36" "build-tools;35.0.0" "system-images;android-34;google_apis;x86_64"
       - name: Start Thor AVD and run instrumented tests
         env:
           AYN_THOR_ALLOW_STOCK_EMULATOR: '1'

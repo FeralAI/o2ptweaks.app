@@ -19,8 +19,14 @@ object PatchUtils {
             nonEmpty(FileUtils.getPathBackup(context, "/boot$slot.img"))
     }
 
+    fun checkActiveSlotBackupExists(context: Context): Boolean {
+        val slot = validSlot() ?: return false
+        return nonEmpty(FileUtils.getPathBackup(context, "/init_boot$slot.img")) ||
+            nonEmpty(FileUtils.getPathBackup(context, "/boot$slot.img"))
+    }
+
     fun checkBootMagiskExists(context: Context): Boolean {
-        val slot = SystemUtils.getPropSlot()
+        val slot = validSlot() ?: return false
         return nonEmpty(FileUtils.getPathBackup(context, "/init_boot_patched$slot.img")) ||
             nonEmpty(FileUtils.getPathBackup(context, "/boot_patched$slot.img"))
     }
@@ -58,12 +64,10 @@ object PatchUtils {
         val bootPath = FileUtils.getPathBackup(context, "/boot_patched$slot.img")
         return when {
             nonEmpty(initBootPath) && RootUtils.hasPartition(context, "init_boot", slot) -> {
-                RootUtils.runRootScript(context, "init_boot.flash.sh")
-                true
+                RootUtils.runRootScript(context, "init_boot.flash.sh") == "0"
             }
             nonEmpty(bootPath) && RootUtils.hasPartition(context, "boot", slot) -> {
-                RootUtils.runRootScript(context, "boot.flash.sh")
-                true
+                RootUtils.runRootScript(context, "boot.flash.sh") == "0"
             }
             else -> false
         }
@@ -73,19 +77,19 @@ object PatchUtils {
         val magiskPath = MagiskUtil.getMagiskPath(context)
         val slot = validSlot() ?: return ""
         if (magiskPath.isBlank()) return ""
-        if (RootUtils.hasPartition(context, "init_boot", slot)) {
+        val initBootSource = FileUtils.getPathBackup(context, "/init_boot$slot.img")
+        val bootSource = FileUtils.getPathBackup(context, "/boot$slot.img")
+        if (nonEmpty(initBootSource) && RootUtils.hasPartition(context, "init_boot", slot)) {
             RootUtils.runRootScript(context, "init_boot.patch.sh \"$magiskPath\"")
             val initBootPatched = FileUtils.getPathBackup(context, "/init_boot_patched$slot.img")
             if (nonEmpty(initBootPatched)) {
-                FileUtils.deleteFile(FileUtils.getPathBackup(context, "/boot$slot.img"))
                 return initBootPatched
             }
         }
-        if (RootUtils.hasPartition(context, "boot", slot)) {
+        if (nonEmpty(bootSource) && RootUtils.hasPartition(context, "boot", slot)) {
             RootUtils.runRootScript(context, "boot.patch.sh \"$magiskPath\"")
             val bootPatched = FileUtils.getPathBackup(context, "/boot_patched$slot.img")
             if (nonEmpty(bootPatched)) {
-                FileUtils.deleteFile(FileUtils.getPathBackup(context, "/init_boot$slot.img"))
                 return bootPatched
             }
         }
@@ -98,12 +102,10 @@ object PatchUtils {
         val bootPath = FileUtils.getPathBackup(context, "/boot$slot.img")
         return when {
             nonEmpty(initBootPath) && RootUtils.hasPartition(context, "init_boot", slot) -> {
-                RootUtils.runRootScript(context, "init_boot.restore.sh")
-                true
+                RootUtils.runRootScript(context, "init_boot.restore.sh") == "0"
             }
             nonEmpty(bootPath) && RootUtils.hasPartition(context, "boot", slot) -> {
-                RootUtils.runRootScript(context, "boot.restore.sh")
-                true
+                RootUtils.runRootScript(context, "boot.restore.sh") == "0"
             }
             else -> false
         }
