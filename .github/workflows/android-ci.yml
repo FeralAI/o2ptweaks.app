@@ -84,6 +84,10 @@ jobs:
           cmdline-tools-version: '15859902'
       - name: Install Thor AVD dependencies
         run: sdkmanager "platform-tools" "emulator" "platforms;android-34" "platforms;android-36" "build-tools;35.0.0" "system-images;android-34;google_apis;x86_64"
+      - name: Install Thor AVD script dependencies
+        run: sudo apt-get update && sudo apt-get install --yes ripgrep
+      - name: Enable hardware virtualization
+        run: if [[ -e /dev/kvm ]]; then sudo chmod 666 /dev/kvm; fi
       - name: Start Thor AVD and run instrumented tests
         env:
           AYN_THOR_ALLOW_STOCK_EMULATOR: '1'
