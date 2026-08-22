@@ -71,6 +71,20 @@ class ThorOperationGuardTest {
             "Install Magisk before preparing a root patch",
             ThorOperationGuard.validate(snapshot(magiskInstalled = false, backupAvailable = true), ThorOperation.PATCH),
         )
+        assertEquals(
+            "Keep a stock active-slot backup before flashing a root patch",
+            ThorOperationGuard.validate(snapshot(magiskInstalled = true, patchedBackupAvailable = true), ThorOperation.FLASH),
+        )
+    }
+
+    @Test
+    fun keepsPatchedCacheCleanupAvailableWithoutRootService() {
+        assertNull(
+            ThorOperationGuard.validate(
+                snapshot(rootServiceAvailable = false),
+                ThorOperation.CLEAR_CACHE,
+            ),
+        )
     }
 
     @Test
@@ -131,6 +145,7 @@ class ThorOperationGuardTest {
         magiskInstalled: Boolean = true,
         backupAvailable: Boolean = false,
         stockRestoreAvailable: Boolean = backupAvailable,
+        patchedBackupAvailable: Boolean = false,
         batteryAvailable: Boolean = true,
     ): ThorSnapshot {
         return ThorSnapshot(
@@ -151,7 +166,7 @@ class ThorOperationGuardTest {
             backupDestinationWritable = backupDestinationWritable,
             backupAvailable = backupAvailable,
             stockRestoreAvailable = stockRestoreAvailable,
-            patchedBackupAvailable = false,
+            patchedBackupAvailable = patchedBackupAvailable,
             operation = OperationState(),
         )
     }

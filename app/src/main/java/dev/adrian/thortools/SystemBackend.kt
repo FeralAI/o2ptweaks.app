@@ -34,7 +34,7 @@ private val ThorOperation.requiresThor: Boolean
     get() = this != ThorOperation.REFRESH
 
 private val ThorOperation.requiresRootService: Boolean
-    get() = this !in setOf(ThorOperation.REFRESH, ThorOperation.INSTALL_MAGISK)
+    get() = this !in setOf(ThorOperation.REFRESH, ThorOperation.INSTALL_MAGISK, ThorOperation.CLEAR_CACHE)
 
 enum class OperationStatus {
     IDLE,
@@ -157,6 +157,7 @@ object ThorOperationGuard {
             ThorOperation.FLASH -> {
                 if (snapshot.rooted) return "The Thor already reports root access; restore stock before flashing again"
                 if (!snapshot.magiskInstalled) return "Install Magisk before flashing a root patch"
+                if (!snapshot.stockRestoreAvailable) return "Keep a stock active-slot backup before flashing a root patch"
                 if (!snapshot.patchedBackupAvailable) return "Prepare a Magisk-patched active-slot image first"
             }
             ThorOperation.RESTORE -> {
