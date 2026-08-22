@@ -116,7 +116,7 @@ jobs:
           esac
           build_type=release
           if [[ "$release_channel" == "alpha" ]]; then
-            build_type=debug
+            build_type=alpha
           else
             test -n "$THORTOOLS_KEYSTORE_BASE64"
             test -n "$THORTOOLS_KEYSTORE_PASSWORD"
@@ -135,9 +135,9 @@ jobs:
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
           echo "build_type=$build_type" >> "$GITHUB_OUTPUT"
 
-      - name: Build alpha debug APK
+      - name: Build alpha APK
         if: steps.release.outputs.channel == 'alpha'
-        run: gradle --no-daemon --stacktrace assembleDebug
+        run: gradle --no-daemon --stacktrace assembleAlpha
 
       - name: Build signed release APK
         if: steps.release.outputs.channel != 'alpha'
@@ -150,9 +150,11 @@ jobs:
       - name: Verify alpha APK
         if: steps.release.outputs.channel == 'alpha'
         run: |
-          release_apk="$(find app/build/outputs/apk/debug -type f -name 'thortools-*.apk' -print -quit)"
+          release_apk="$(find app/build/outputs/apk/alpha -type f -name 'thortools-*.apk' -print -quit)"
           test -n "$release_apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$release_apk"
+          package_name="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$release_apk" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p")"
+          test "$package_name" = "dev.adrian.thortools"
 
       - name: Verify signed release APK
         if: steps.release.outputs.channel != 'alpha'

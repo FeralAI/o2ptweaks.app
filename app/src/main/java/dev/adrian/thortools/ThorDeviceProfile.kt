@@ -59,7 +59,7 @@ object DeviceProfile {
     const val LOWER_DIAGONAL_MILLIMETRES = 99.6f
     const val LOWER_MINIMUM_TEXT_SP = 18f
 
-    private val thorPattern = Regex("(^|\\s)(ayn\\s*)?thor(\\s+(lite|base|pro|max))?(\\s|$)")
+    private val thorPattern = Regex("(^|\\s)(ayn\\s*)?thor(?:\\s*(lite|base|pro|max))?(\\s|$)")
 
     fun detect(properties: DeviceProperties): ThorDeviceProfile {
         val searchable = listOf(
@@ -75,6 +75,7 @@ object DeviceProfile {
 
     fun variantFor(value: String): ThorVariant {
         val normalized = value.normalized()
+        if (!thorPattern.containsMatchIn(normalized)) return ThorVariant.UNKNOWN
         return when {
             normalized.contains("lite") -> ThorVariant.LITE
             normalized.contains("max") -> ThorVariant.MAX

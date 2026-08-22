@@ -16,48 +16,38 @@ class RootExec {
         binder = runCatching {
             val serviceManager = Class.forName("android.os.ServiceManager")
             val getService = serviceManager.getDeclaredMethod("getService", String::class.java)
-            val binder = getService.invoke(serviceManager, "PServerBinder") as IBinder
-            pServerAvailable = true
+            val binder = getService.invoke(serviceManager, "PServerBinder") as? IBinder
+            pServerAvailable = binder?.isBinderAlive == true
             binder
         }.getOrDefault(null)
     }
 
-    fun executeAsRoot(cmd: String): Result<String?> {
-        if (binder == null) return Result.failure(IllegalStateException("PServer not available!"))
+    fun executeAsRoot(cmd: String): Result<String?> = execute(arrayOf(cmd, "1"))
 
+    fun executeAsRoot(cmd: Array<String>): Result<String?> = execute(cmd + "1")
+
+    private fun execute(arguments: Array<String>): Result<String?> {
+        val service = binder ?: return Result.failure(IllegalStateException("PServer not available!"))
+        if (!service.isBinderAlive) return Result.failure(IllegalStateException("PServer is not responding"))
         val data = Parcel.obtain()
         val reply = Parcel.obtain()
-        data.writeStringArray(arrayOf(cmd, "1"))
-        runCatching { binder!!.transact(0, data, reply, 0) }
-            .getOrElse {
-                return Result.failure(it)
+        return try {
+            data.writeStringArray(arguments)
+            if (!service.transact(0, data, reply, 0)) {
+                Result.failure(IllegalStateException("PServer rejected the command"))
+            } else {
+                val bytes = reply.createByteArray()
+                val result = bytes?.toString(Charset.defaultCharset())?.trim()?.let {
+                    if (it == "null") null else it
+                }
+                Result.success(result)
             }
-        val bytes = reply.createByteArray()
-        val result = bytes?.toString(Charset.defaultCharset())?.trim()?.let {
-            if (it == "null") null else it
+        } catch (error: Throwable) {
+            Result.failure(error)
+        } finally {
+            data.recycle()
+            reply.recycle()
         }
-        data.recycle()
-        reply.recycle()
-        return Result.success(result)
-    }
-
-    fun executeAsRoot(cmd: Array<String>): Result<String?> {
-        if (binder == null) return Result.failure(IllegalStateException("PServer not available!"))
-
-        val data = Parcel.obtain()
-        val reply = Parcel.obtain()
-        data.writeStringArray(cmd + "1")
-        runCatching { binder!!.transact(0, data, reply, 0) }
-            .getOrElse {
-                return Result.failure(it)
-            }
-        val bytes = reply.createByteArray()
-        val result = bytes?.toString(Charset.defaultCharset())?.trim()?.let {
-            if (it == "null") null else it
-        }
-        data.recycle()
-        reply.recycle()
-        return Result.success(result)
     }
 
 }

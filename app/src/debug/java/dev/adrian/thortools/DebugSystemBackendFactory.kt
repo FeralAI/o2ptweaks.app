@@ -49,6 +49,8 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
         backupDestinationWritable = true,
         backupAvailable = false,
         patchedBackupAvailable = false,
+        stockBackupSlots = emptySet(),
+        patchedBackupSlots = emptySet(),
         operation = OperationState(),
     )
 
@@ -58,11 +60,17 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
         when (operation) {
             ThorOperation.BACKUP -> {
                 writeImages("boot", "init_boot")
-                state = state.copy(backupAvailable = true)
+                state = state.copy(
+                    backupAvailable = true,
+                    stockBackupSlots = setOf("_a", "_b"),
+                )
             }
             ThorOperation.PATCH -> {
                 writeImages("boot_patched", "init_boot_patched")
-                state = state.copy(patchedBackupAvailable = true)
+                state = state.copy(
+                    patchedBackupAvailable = true,
+                    patchedBackupSlots = setOf("_a", "_b"),
+                )
             }
             ThorOperation.FLASH -> state = state.copy(
                 rooted = true,
@@ -78,7 +86,12 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                         File(context.getExternalFilesDir(null), "$prefix$slot.img").delete()
                     }
                 }
-                state = state.copy(backupAvailable = false, patchedBackupAvailable = false)
+                state = state.copy(
+                    backupAvailable = false,
+                    patchedBackupAvailable = false,
+                    stockBackupSlots = emptySet(),
+                    patchedBackupSlots = emptySet(),
+                )
             }
             ThorOperation.SET_DPI -> state = state.copy(lcdDensity = argument?.toIntOrNull() ?: state.lcdDensity)
             ThorOperation.SET_ANIMATION -> state = state.copy(animationSpeed = argument?.toFloatOrNull() ?: state.animationSpeed)

@@ -9,26 +9,31 @@ object PatchUtils {
 
     fun backupBoot(context: Context): Boolean {
         if (!RootUtils.hasPServer() || !FileUtils.isBackupDestinationWritable(context)) return false
-        RootUtils.runRootScript(context, "init_boot.backup.sh")
-        RootUtils.runRootScript(context, "boot.backup.sh")
-        return checkBootBackupExists(context)
+        val initBootBackedUp = RootUtils.runRootScript(context, "init_boot.backup.sh") == "0"
+        val bootBackedUp = RootUtils.runRootScript(context, "boot.backup.sh") == "0"
+        return (initBootBackedUp || bootBackedUp) && checkBootBackupExists(context)
     }
 
-    fun checkBootBackupExists(context: Context): Boolean = slots.any { slot ->
+    fun checkBootBackupExists(context: Context): Boolean = stockBackupSlots(context).isNotEmpty()
+
+    fun stockBackupSlots(context: Context): Set<String> = slots.filter { slot ->
         nonEmpty(FileUtils.getPathBackup(context, "/init_boot$slot.img")) ||
             nonEmpty(FileUtils.getPathBackup(context, "/boot$slot.img"))
-    }
+    }.toSet()
+
+    fun patchedBackupSlots(context: Context): Set<String> = slots.filter { slot ->
+        nonEmpty(FileUtils.getPathBackup(context, "/init_boot_patched$slot.img")) ||
+            nonEmpty(FileUtils.getPathBackup(context, "/boot_patched$slot.img"))
+    }.toSet()
 
     fun checkActiveSlotBackupExists(context: Context): Boolean {
         val slot = validSlot() ?: return false
-        return nonEmpty(FileUtils.getPathBackup(context, "/init_boot$slot.img")) ||
-            nonEmpty(FileUtils.getPathBackup(context, "/boot$slot.img"))
+        return slot in stockBackupSlots(context)
     }
 
     fun checkBootMagiskExists(context: Context): Boolean {
         val slot = validSlot() ?: return false
-        return nonEmpty(FileUtils.getPathBackup(context, "/init_boot_patched$slot.img")) ||
-            nonEmpty(FileUtils.getPathBackup(context, "/boot_patched$slot.img"))
+        return slot in patchedBackupSlots(context)
     }
 
     fun imageHashes(context: Context): Map<String, String> {
@@ -45,7 +50,8 @@ object PatchUtils {
         }.toMap()
     }
 
-    fun clearBootCache(context: Context) {
+    fun clearBootCache(context: Context): Boolean {
+        var success = true
         slots.forEach { slot ->
             listOf(
                 "/boot$slot.img",
@@ -53,9 +59,11 @@ object PatchUtils {
                 "/init_boot$slot.img",
                 "/init_boot_patched$slot.img",
             ).forEach { relativePath ->
-                FileUtils.deleteFile(FileUtils.getPathBackup(context, relativePath))
+                val path = FileUtils.getPathBackup(context, relativePath)
+                if (File(path).exists() && !FileUtils.deleteFile(path)) success = false
             }
         }
+        return success
     }
 
     fun flashBoot(context: Context): Boolean {
@@ -80,16 +88,16 @@ object PatchUtils {
         val initBootSource = FileUtils.getPathBackup(context, "/init_boot$slot.img")
         val bootSource = FileUtils.getPathBackup(context, "/boot$slot.img")
         if (nonEmpty(initBootSource) && RootUtils.hasPartition(context, "init_boot", slot)) {
-            RootUtils.runRootScript(context, "init_boot.patch.sh \"$magiskPath\"")
             val initBootPatched = FileUtils.getPathBackup(context, "/init_boot_patched$slot.img")
-            if (nonEmpty(initBootPatched)) {
+            FileUtils.deleteFile(initBootPatched)
+            if (RootUtils.runRootScript(context, "init_boot.patch.sh \"$magiskPath\"") == "0" && nonEmpty(initBootPatched)) {
                 return initBootPatched
             }
         }
         if (nonEmpty(bootSource) && RootUtils.hasPartition(context, "boot", slot)) {
-            RootUtils.runRootScript(context, "boot.patch.sh \"$magiskPath\"")
             val bootPatched = FileUtils.getPathBackup(context, "/boot_patched$slot.img")
-            if (nonEmpty(bootPatched)) {
+            FileUtils.deleteFile(bootPatched)
+            if (RootUtils.runRootScript(context, "boot.patch.sh \"$magiskPath\"") == "0" && nonEmpty(bootPatched)) {
                 return bootPatched
             }
         }

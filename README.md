@@ -28,13 +28,14 @@ Thor-specific audio changes are intentionally deferred until they have been meas
 AEMU_SOURCE_ROOT=/path/to/aemu ./scripts/build-ayn-thor-emulator-overlay.sh
 ./scripts/run-ayn-thor-avd.sh
 ANDROID_HOME=/path/to/android-sdk ./gradlew assembleDebug
+ANDROID_HOME=/path/to/android-sdk ./gradlew assembleAlpha
 ```
 
-The emulator validates the dual-screen layout, touch mapping, and UI state. It cannot validate real root services or partition writes. Keep `AYN_THOR_ALLOW_STOCK_EMULATOR=1` limited to UI diagnostics when the patched overlay is unavailable.
+The debug APK uses the deterministic fake backend for emulator validation. The alpha APK keeps the real Thor backend while using the automatically generated debug signing key, so it is the build to install on physical hardware. The emulator validates the dual-screen layout, touch mapping, and UI state. It cannot validate real root services or partition writes. Keep `AYN_THOR_ALLOW_STOCK_EMULATOR=1` limited to UI diagnostics when the patched overlay is unavailable.
 
 ## Release
 
-Release tags use `vMAJOR.MINOR.PATCH-alpha.N`, `vMAJOR.MINOR.PATCH-beta.N`, or `vMAJOR.MINOR.PATCH`. Alpha releases use the automatically signed debug build and do not require repository signing secrets. Beta and stable releases use the production keystore and are uploaded as `thortools-<tag>.apk`.
+Release tags use `vMAJOR.MINOR.PATCH-alpha.N`, `vMAJOR.MINOR.PATCH-beta.N`, or `vMAJOR.MINOR.PATCH`. Alpha releases use an automatically debug-signed alpha build with the real Thor backend and do not require repository signing secrets. Beta and stable releases use the production keystore and are uploaded as `thortools-<tag>.apk`.
 
 ## Credits and support
 

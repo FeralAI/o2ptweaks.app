@@ -76,6 +76,8 @@ object RootUtils {
         return result.getOrNull().also { Log.d(TAG, "root command completed: ${result.isSuccess}") }
     }
 
+    fun runRootAction(context: Context, command: String): Boolean = RootExec().executeAsRoot(command).isSuccess
+
     fun runRootScript(context: Context, script: String): String? {
         val filesPath = File(context.filesDir, ASSET_SUBFOLDER).absolutePath
         val logPath = getLogFile(context)?.absolutePath ?: return null
@@ -87,13 +89,10 @@ object RootUtils {
     fun checkFileExistsRoot(context: Context, path: String): Boolean =
         runRootCommand(context, "[ -e \"$path\" ] && echo 1 || echo 0") == "1"
 
-    fun reboot(context: Context) {
-        runRootCommand(context, "reboot")
-    }
+    fun reboot(context: Context): Boolean = runRootAction(context, "reboot")
 
-    fun rootCopy(context: Context, from: String, to: String) {
-        if (File(from).exists()) runRootCommand(context, "cp -afv \"$from\" \"$to\"")
-    }
+    fun rootCopy(context: Context, from: String, to: String): Boolean =
+        File(from).exists() && runRootAction(context, "cp -afv \"$from\" \"$to\"")
 
     fun isPackageInstalled(context: Context, packageName: String): Boolean = try {
         context.packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
@@ -105,28 +104,21 @@ object RootUtils {
     fun hasPartition(context: Context, partitionName: String, slot: String): Boolean =
         hasPServer() && checkFileExistsRoot(context, "/dev/block/by-name/$partitionName$slot")
 
-    fun installThorToolsMagiskModule(context: Context) {
+    fun installThorToolsMagiskModule(context: Context): Boolean {
         val modulePath = "$MODULE_DIR/thortools"
         val sourcePath = "${context.filesDir}/app/support/magisk/thortools"
-        runRootCommand(context, "mkdir -p $modulePath")
-        runRootCommand(context, "cp -fR $sourcePath/. $modulePath/")
+        return runRootAction(context, "mkdir -p $modulePath") &&
+            runRootAction(context, "cp -fR \"$sourcePath/.\" \"$modulePath/\"")
     }
 
-    fun startActivityRoot(context: Context, activity: String) {
-        runRootCommand(context, "am start -n $activity")
-    }
+    fun startActivityRoot(context: Context, activity: String): Boolean = runRootAction(context, "am start -n $activity")
 
-    fun setAnimationSpeed(context: Context, animationSpeed: Float) {
-        runRootCommand(context, "settings put global window_animation_scale $animationSpeed")
-        runRootCommand(context, "settings put global transition_animation_scale $animationSpeed")
-        runRootCommand(context, "settings put global animator_duration_scale $animationSpeed")
-    }
+    fun setAnimationSpeed(context: Context, animationSpeed: Float): Boolean =
+        runRootAction(context, "settings put global window_animation_scale $animationSpeed") &&
+            runRootAction(context, "settings put global transition_animation_scale $animationSpeed") &&
+            runRootAction(context, "settings put global animator_duration_scale $animationSpeed")
 
-    fun setDpi(context: Context, dpi: Int) {
-        runRootCommand(context, "wm density $dpi")
-    }
+    fun setDpi(context: Context, dpi: Int): Boolean = runRootAction(context, "wm density $dpi")
 
-    fun resetDpi(context: Context) {
-        runRootCommand(context, "resetprop -p ro.sf.lcd_density")
-    }
+    fun resetDpi(context: Context): Boolean = runRootAction(context, "resetprop -p ro.sf.lcd_density")
 }

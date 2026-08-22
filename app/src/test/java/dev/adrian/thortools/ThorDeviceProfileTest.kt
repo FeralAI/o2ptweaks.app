@@ -12,6 +12,8 @@ class ThorDeviceProfileTest {
         assertTrue(DeviceProfile.detect(DeviceProperties(model = "tHoR")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(model = "AYNThor")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(device = "thor_lite")).isThor)
+        assertTrue(DeviceProfile.detect(DeviceProperties(device = "thorpro")).isThor)
+        assertTrue(DeviceProfile.detect(DeviceProperties(product = "AYNThorMax")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(product = "AYN Thor Max")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", model = "Thor")).isThor)
     }
@@ -22,7 +24,9 @@ class ThorDeviceProfileTest {
         assertEquals(ThorVariant.BASE, DeviceProfile.variantFor("AYN Thor"))
         assertEquals(ThorVariant.PRO, DeviceProfile.variantFor("AYN Thor Pro"))
         assertEquals(ThorVariant.MAX, DeviceProfile.variantFor("AYN Thor Max"))
+        assertEquals(ThorVariant.PRO, DeviceProfile.variantFor("thorpro"))
         assertEquals(ThorVariant.UNKNOWN, DeviceProfile.variantFor("AYN Loki"))
+        assertEquals(ThorVariant.UNKNOWN, DeviceProfile.variantFor("Loki Pro"))
     }
 
     @Test

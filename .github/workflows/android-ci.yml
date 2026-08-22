@@ -44,7 +44,7 @@ jobs:
       - name: Set up Gradle caching
         uses: gradle/actions/setup-gradle@v6
       - name: Run unit tests, lint, and build
-        run: gradle --no-daemon --stacktrace --console=plain :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+        run: gradle --no-daemon --stacktrace --console=plain :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleAlpha
       - name: Upload JUnit results
         if: always()
         uses: actions/upload-artifact@v7
@@ -67,6 +67,12 @@ jobs:
         with:
           name: thortools-debug
           path: app/build/outputs/apk/debug/thortools-*-debug.apk
+      - name: Upload alpha APK
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: thortools-alpha
+          path: app/build/outputs/apk/alpha/thortools-*.apk
 
   instrumented:
     runs-on: ubuntu-24.04

@@ -30,6 +30,12 @@ enum class ThorOperation {
     SET_BOOT_ANIMATION,
 }
 
+private val ThorOperation.requiresThor: Boolean
+    get() = this != ThorOperation.REFRESH
+
+private val ThorOperation.requiresRootService: Boolean
+    get() = this !in setOf(ThorOperation.REFRESH, ThorOperation.INSTALL_MAGISK)
+
 enum class OperationStatus {
     IDLE,
     RUNNING,
@@ -60,6 +66,8 @@ data class ThorSnapshot(
     val backupDestinationWritable: Boolean,
     val backupAvailable: Boolean,
     val patchedBackupAvailable: Boolean,
+    val stockBackupSlots: Set<String> = emptySet(),
+    val patchedBackupSlots: Set<String> = emptySet(),
     val operation: OperationState,
 ) {
     val capabilityRows: List<Pair<String, Boolean>>
@@ -92,6 +100,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
         val rootService = RootUtils.hasPServer()
         val rooted = RootUtils.isDeviceRooted
         val magisk = MagiskUtil.hasMagiskPackage(context)
+        val battery = SystemUtils.getBatteryPercent(context)
         val initBoot = rootService && RootUtils.checkFileExistsRoot(context, "/dev/block/by-name/init_boot${properties.slot}")
         val boot = rootService && RootUtils.checkFileExistsRoot(context, "/dev/block/by-name/boot${properties.slot}")
         val backupDestination = FileUtils.isBackupDestinationWritable(context)
@@ -102,12 +111,12 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             if (properties.slot == "_a" || properties.slot == "_b") add(ThorCapability.ACTIVE_SLOT)
             if (initBoot) add(ThorCapability.INIT_BOOT_PARTITION)
             if (boot) add(ThorCapability.BOOT_PARTITION)
-            if (SystemUtils.getBatteryPercent(context) != null) add(ThorCapability.BATTERY_STATE)
+            if (battery != null) add(ThorCapability.BATTERY_STATE)
             if (backupDestination) add(ThorCapability.BACKUP_DESTINATION)
         }
         return ThorSnapshot(
             profile = DeviceProfile.detect(properties).copy(capabilities = capabilities),
-            batteryPercent = SystemUtils.getBatteryPercent(context) ?: 0,
+            batteryPercent = battery ?: 0,
             lcdDensity = SystemUtils.getPropLcdDensity(),
             volumeSteps = SystemUtils.getPropVolumeSteps(),
             animationSpeed = AppSettings.getAnimationSpeed(AppSettings.getSharedPrefs(context)),
@@ -121,15 +130,16 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             backupDestinationWritable = backupDestination,
             backupAvailable = PatchUtils.checkActiveSlotBackupExists(context),
             patchedBackupAvailable = PatchUtils.checkBootMagiskExists(context),
+            stockBackupSlots = PatchUtils.stockBackupSlots(context),
+            patchedBackupSlots = PatchUtils.patchedBackupSlots(context),
             operation = operation,
         )
     }
 
     override fun perform(operation: ThorOperation, argument: String?): OperationResult {
         val current = snapshot()
-        val mutating = operation != ThorOperation.REFRESH && operation != ThorOperation.INSTALL_MAGISK
-        if (mutating && !current.profile.isThor) return OperationResult(false, "Only an AYN Thor can be modified")
-        if (operation in setOf(ThorOperation.BACKUP, ThorOperation.PATCH, ThorOperation.FLASH, ThorOperation.RESTORE) && !current.rootServiceAvailable) {
+        if (operation.requiresThor && !current.profile.isThor) return OperationResult(false, "Only an AYN Thor can be modified")
+        if (operation.requiresRootService && !current.rootServiceAvailable) {
             return OperationResult(false, "The Thor privileged root service is unavailable")
         }
         if (operation in setOf(ThorOperation.BACKUP, ThorOperation.PATCH, ThorOperation.FLASH, ThorOperation.RESTORE) && current.batteryPercent < 35) {
@@ -146,10 +156,10 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
         }
         return when (operation) {
             ThorOperation.REFRESH -> OperationResult(true, "System state refreshed")
-            ThorOperation.INSTALL_MAGISK -> OperationResult(
-                MagiskUtil.enqueueLatestDownload(context),
-                "Magisk download started in the Download folder",
-            )
+            ThorOperation.INSTALL_MAGISK -> {
+                val queued = MagiskUtil.enqueueLatestDownload(context)
+                OperationResult(queued, if (queued) "Magisk download started in the Download folder" else "Could not start the Magisk download")
+            }
             ThorOperation.BACKUP -> if (PatchUtils.backupBoot(context)) {
                 OperationResult(true, "Both available boot partitions were backed up")
             } else {
@@ -177,34 +187,43 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
                 OperationResult(false, "No stock active-slot image is available")
             }
             ThorOperation.CLEAR_CACHE -> {
-                PatchUtils.clearBootCache(context)
-                OperationResult(true, "Cached images cleared")
+                val cleared = PatchUtils.clearBootCache(context)
+                OperationResult(cleared, if (cleared) "Cached images cleared" else "Some cached images could not be removed")
             }
             ThorOperation.REBOOT -> {
-                RootUtils.reboot(context)
-                OperationResult(true, "Reboot requested")
+                val rebooted = RootUtils.reboot(context)
+                OperationResult(rebooted, if (rebooted) "Reboot requested" else "The Thor reboot command failed")
             }
             ThorOperation.SET_DPI -> {
                 val value = argument?.toIntOrNull() ?: return OperationResult(false, "Invalid DPI")
-                RootUtils.setDpi(context, value)
-                OperationResult(true, "DPI set to $value")
+                if (value !in AppSettings.DPI_MIN..AppSettings.DPI_MAX) return OperationResult(false, "DPI must be between ${AppSettings.DPI_MIN} and ${AppSettings.DPI_MAX}")
+                val changed = RootUtils.setDpi(context, value)
+                OperationResult(changed, if (changed) "DPI set to $value" else "The Thor DPI command failed")
             }
             ThorOperation.SET_ANIMATION -> {
                 val value = argument?.toFloatOrNull() ?: return OperationResult(false, "Invalid animation speed")
-                RootUtils.setAnimationSpeed(context, value)
-                OperationResult(true, "Animation speed set to ${value}x")
+                if (!value.isFinite() || value !in 0f..1f) return OperationResult(false, "Animation speed must be between 0x and 1x")
+                val changed = RootUtils.setAnimationSpeed(context, value)
+                OperationResult(changed, if (changed) "Animation speed set to ${value}x" else "The Thor animation command failed")
             }
             ThorOperation.SET_VOLUME_STEPS -> {
                 val value = argument?.toIntOrNull() ?: return OperationResult(false, "Invalid volume step count")
+                if (value !in AppSettings.VOLUME_STEPS_MIN..AppSettings.VOLUME_STEPS_MAX) return OperationResult(false, "Volume steps must be between ${AppSettings.VOLUME_STEPS_MIN} and ${AppSettings.VOLUME_STEPS_MAX}")
                 AppSettings.setVolumeSteps(AppSettings.getSharedPrefs(context), value)
-                AppSettings.save(context)
-                OperationResult(true, "Volume steps set to $value; reboot required")
+                val saved = AppSettings.save(context)
+                OperationResult(saved, if (saved) "Volume steps set to $value; reboot required" else "Could not save the volume-step setting")
             }
             ThorOperation.SET_BOOT_ANIMATION -> {
-                val enabled = argument == "true"
+                val enabled = when (argument) {
+                    "true" -> true
+                    "false" -> false
+                    else -> return OperationResult(false, "Invalid boot-animation setting")
+                }
                 AppSettings.setSkipBootAnimation(AppSettings.getSharedPrefs(context), enabled)
-                AppSettings.save(context)
-                OperationResult(true, if (enabled) "Boot animation disabled" else "Boot animation enabled")
+                val saved = AppSettings.save(context)
+                OperationResult(saved, if (saved) {
+                    if (enabled) "Boot animation disabled; reboot required" else "Boot animation enabled; reboot required"
+                } else "Could not save the boot-animation setting")
             }
         }
     }

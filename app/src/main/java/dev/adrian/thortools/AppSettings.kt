@@ -26,8 +26,7 @@ object AppSettings {
     fun getSharedPrefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    fun save(context: Context) {
-        if (!RootUtils.isDeviceRooted) return
+    fun save(context: Context): Boolean {
         val sharedPrefs = getSharedPrefs(context)
         val properties = buildString {
             val dpi = getDpi(sharedPrefs)
@@ -37,8 +36,8 @@ object AppSettings {
             if (getSkipBootAnimation(sharedPrefs)) appendLine("debug.sf.nobootanimation=1")
         }
         val propFile = FileUtils.getPathSupportFiles(context, "/magisk/thortools/system.prop")
-        FileUtils.saveFile(propFile, properties)
-        RootUtils.installThorToolsMagiskModule(context)
+        if (!FileUtils.saveFile(propFile, properties)) return false
+        return RootUtils.installThorToolsMagiskModule(context)
     }
 
     fun getPropLcdDensity(sharedPrefs: SharedPreferences, defaultValue: Int = 0): Int =
