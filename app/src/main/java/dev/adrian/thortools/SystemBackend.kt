@@ -231,7 +231,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             ThorOperation.BACKUP -> if (PatchUtils.backupBoot(context)) {
                 OperationResult(true, "Available Thor boot partitions were backed up")
             } else {
-                OperationResult(false, "No readable Thor boot partitions were backed up")
+                OperationResult(false, "Thor stock backup was not completed; verify every available slot and its Download copy")
             }
             ThorOperation.PATCH -> if (!current.magiskInstalled || !current.backupAvailable) {
                 OperationResult(false, "Install Magisk and create a stock backup before patching")

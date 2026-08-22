@@ -38,7 +38,9 @@ then
     if cp -afv "$MAGISK_NEWBOOT" "$TEMP_PATCHED_BOOT" >> "$LOG_FILE" 2>&1 &&
         [ -s "$TEMP_PATCHED_BOOT" ] &&
         mv -f "$TEMP_PATCHED_BOOT" "$PATCHED_BOOT" &&
-        cp -afv "$MAGISK_NEWBOOT" "$DOWNLOAD_PATH/boot_patched$ACTIVE_SLOT.img" >> "$LOG_FILE" 2>&1; then
+        [ -s "$PATCHED_BOOT" ]; then
+        cp -afv "$MAGISK_NEWBOOT" "$DOWNLOAD_PATH/boot_patched$ACTIVE_SLOT.img" >> "$LOG_FILE" 2>&1 ||
+            echo "Download copy unavailable; the app-local patched image remains usable" >> "$LOG_FILE"
         rm -f "$MAGISK_NEWBOOT"
         echo "Magisk patch boot.img complete!" >> "$LOG_FILE"
         exit 0
