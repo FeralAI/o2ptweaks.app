@@ -66,4 +66,18 @@ class ThorDeviceProfileTest {
         assertEquals("_b", DeviceProfile.normalizeSlot(" B "))
         assertEquals("", DeviceProfile.normalizeSlot("unknown"))
     }
+
+    @Test
+    fun hidesThorCapabilitiesForDiagnosticsOutsideThor() {
+        val snapshot = ThorSnapshot.loading(OperationState()).copy(
+            profile = DeviceProfile.detect(DeviceProperties(model = "AYN Loki")).copy(
+                capabilities = ThorCapability.entries.toSet(),
+            ),
+        )
+        val rows = snapshot.capabilityRows.toMap()
+        assertFalse(rows.getValue("Thor device"))
+        assertFalse(rows.getValue("Root service"))
+        assertFalse(rows.getValue("Magisk"))
+        assertFalse(rows.getValue("Backup destination"))
+    }
 }

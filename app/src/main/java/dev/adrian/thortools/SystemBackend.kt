@@ -74,15 +74,18 @@ data class ThorSnapshot(
     val capabilityRows: List<Pair<String, Boolean>>
         get() = listOf(
             "Thor device" to profile.isThor,
-            "Root service" to profile.supports(ThorCapability.ROOT_SERVICE),
-            "Root access" to profile.supports(ThorCapability.ROOTED),
-            "Magisk" to profile.supports(ThorCapability.MAGISK),
-            "Active slot" to profile.supports(ThorCapability.ACTIVE_SLOT),
-            "init_boot partition" to profile.supports(ThorCapability.INIT_BOOT_PARTITION),
-            "boot partition" to profile.supports(ThorCapability.BOOT_PARTITION),
-            "Battery state" to profile.supports(ThorCapability.BATTERY_STATE),
-            "Backup destination" to profile.supports(ThorCapability.BACKUP_DESTINATION),
+            "Root service" to supportsThorCapability(ThorCapability.ROOT_SERVICE),
+            "Root access" to supportsThorCapability(ThorCapability.ROOTED),
+            "Magisk" to supportsThorCapability(ThorCapability.MAGISK),
+            "Active slot" to supportsThorCapability(ThorCapability.ACTIVE_SLOT),
+            "init_boot partition" to supportsThorCapability(ThorCapability.INIT_BOOT_PARTITION),
+            "boot partition" to supportsThorCapability(ThorCapability.BOOT_PARTITION),
+            "Battery state" to supportsThorCapability(ThorCapability.BATTERY_STATE),
+            "Backup destination" to supportsThorCapability(ThorCapability.BACKUP_DESTINATION),
         )
+
+    private fun supportsThorCapability(capability: ThorCapability): Boolean =
+        profile.isThor && profile.supports(capability)
 
     companion object {
         fun loading(operation: OperationState): ThorSnapshot = ThorSnapshot(
@@ -352,8 +355,8 @@ class ThorSession(
         } else {
             snapshot.copy(
                 operation = snapshot.operation.copy(
-                    status = OperationStatus.FAILURE,
-                    message = "Could not clear the interrupted-operation recovery record",
+                    status = OperationStatus.INTERRUPTED,
+                    message = "Could not clear the recovery record; try acknowledging it again before retrying",
                 ),
             )
         }
@@ -383,11 +386,20 @@ class ThorSession(
                 if (result.success) OperationStatus.SUCCESS else OperationStatus.FAILURE,
                 result.message,
             )
-            clearJournal()
+            val journalCleared = clearJournal()
+            val reported = if (journalCleared) {
+                finished
+            } else {
+                OperationState(
+                    operation = operation,
+                    status = OperationStatus.INTERRUPTED,
+                    message = "Operation finished, but its recovery record could not be cleared; verify the Thor state before acknowledging",
+                )
+            }
             snapshot = runCatching {
-                withContext(Dispatchers.IO) { backend.snapshot(finished) }
+                withContext(Dispatchers.IO) { backend.snapshot(reported) }
             }.getOrElse {
-                snapshot.copy(operation = finished)
+                snapshot.copy(operation = reported)
             }
         }
     }
