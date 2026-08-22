@@ -71,6 +71,13 @@ data class ThorSnapshot(
     val patchedBackupSlots: Set<String> = emptySet(),
     val operation: OperationState,
 ) {
+    val recoveryPartition: String
+        get() = when {
+            initBootAvailable -> "init_boot"
+            bootAvailable -> "boot"
+            else -> "Unavailable"
+        }
+
     val capabilityRows: List<Pair<String, Boolean>>
         get() = listOf(
             "Thor device" to profile.isThor,
@@ -155,16 +162,16 @@ object ThorOperationGuard {
             ThorOperation.PATCH -> {
                 if (snapshot.rooted) return "The Thor is already rooted; restore stock before preparing another patch"
                 if (!snapshot.magiskInstalled) return "Install Magisk before preparing a root patch"
-                if (!snapshot.backupAvailable) return "Create a stock active-slot backup before patching"
+                if (!snapshot.backupAvailable) return "Create a verified ${snapshot.recoveryPartition} stock backup before patching"
             }
             ThorOperation.FLASH -> {
                 if (snapshot.rooted) return "The Thor already reports root access; restore stock before flashing again"
                 if (!snapshot.magiskInstalled) return "Install Magisk before flashing a root patch"
-                if (!snapshot.stockRestoreAvailable) return "Keep a stock active-slot backup before flashing a root patch"
+                if (!snapshot.stockRestoreAvailable) return "Keep a verified ${snapshot.recoveryPartition} stock backup before flashing a root patch"
                 if (!snapshot.patchedBackupAvailable) return "Prepare a Magisk-patched active-slot image first"
             }
             ThorOperation.RESTORE -> {
-                if (!snapshot.stockRestoreAvailable) return "Create a stock active-slot backup before restoring"
+                if (!snapshot.stockRestoreAvailable) return "Create a verified ${snapshot.recoveryPartition} stock backup before restoring"
             }
             ThorOperation.SET_VOLUME_STEPS, ThorOperation.SET_BOOT_ANIMATION -> {
                 if (!snapshot.magiskInstalled || !snapshot.rooted) return "Root the Thor with Magisk before changing module settings"

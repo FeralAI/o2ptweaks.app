@@ -10,9 +10,12 @@ class RecoveryScriptContractTest {
         listOf("boot.backup.sh", "init_boot.backup.sh").forEach { name ->
             val source = script(name)
             assertTrue(source.contains("failed=0"))
+            assertTrue(source.contains("expected=0"))
+            assertTrue(source.contains("expected=\$((expected + 1))"))
+            assertTrue(source.contains("copied=\$((copied + 1))"))
             assertTrue(source.contains("DOWNLOAD_FILE="))
             assertTrue(source.contains("[ -s \"\$DOWNLOAD_FILE\" ]"))
-            assertTrue(source.contains("[ \"\$copied\" -eq 1 ] && [ \"\$failed\" -eq 0 ]"))
+            assertTrue(source.contains("[ \"\$expected\" -gt 0 ] && [ \"\$copied\" -eq \"\$expected\" ] && [ \"\$failed\" -eq 0 ]"))
         }
     }
 

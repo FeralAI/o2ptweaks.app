@@ -64,7 +64,7 @@ class ThorOperationGuardTest {
             ThorOperationGuard.validate(snapshot(rooted = true), ThorOperation.BACKUP),
         )
         assertEquals(
-            "Create a stock active-slot backup before patching",
+            "Create a verified init_boot stock backup before patching",
             ThorOperationGuard.validate(snapshot(magiskInstalled = true), ThorOperation.PATCH),
         )
         assertEquals(
@@ -72,7 +72,7 @@ class ThorOperationGuardTest {
             ThorOperationGuard.validate(snapshot(magiskInstalled = false, backupAvailable = true), ThorOperation.PATCH),
         )
         assertEquals(
-            "Keep a stock active-slot backup before flashing a root patch",
+            "Keep a verified init_boot stock backup before flashing a root patch",
             ThorOperationGuard.validate(snapshot(magiskInstalled = true, patchedBackupAvailable = true), ThorOperation.FLASH),
         )
     }
@@ -110,7 +110,7 @@ class ThorOperationGuardTest {
     @Test
     fun rejectsRestoreWithoutAnyStockCopy() {
         assertEquals(
-            "Create a stock active-slot backup before restoring",
+            "Create a verified init_boot stock backup before restoring",
             ThorOperationGuard.validate(snapshot(rooted = true), ThorOperation.RESTORE),
         )
     }
@@ -124,6 +124,13 @@ class ThorOperationGuardTest {
                 ThorOperation.RESTORE,
             ),
         )
+    }
+
+    @Test
+    fun reportsInitBootAsTheRecoveryTargetWhenBothPartitionsExist() {
+        assertEquals("init_boot", snapshot().recoveryPartition)
+        assertEquals("boot", snapshot(initBootAvailable = false).recoveryPartition)
+        assertEquals("Unavailable", snapshot(initBootAvailable = false, bootAvailable = false).recoveryPartition)
     }
 
     @Test

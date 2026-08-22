@@ -195,6 +195,7 @@ private fun DashboardIdentity(snapshot: ThorSnapshot) {
             DataLine("Root service", if (snapshot.rootServiceAvailable) "Available" else "Unavailable")
             DataLine("Root state", if (snapshot.rooted) "Rooted" else "Not rooted")
             DataLine("Magisk", if (snapshot.magiskInstalled) "Installed" else "Not installed")
+            DataLine("Recovery target", snapshot.recoveryPartition)
             DataLine("Stock backups", "${snapshot.stockBackupSlots.size}/2 slots")
             DataLine("Stock restore source", if (snapshot.stockRestoreAvailable) "Available" else "Unavailable")
             DataLine("Patched backups", "${snapshot.patchedBackupSlots.size}/2 slots")

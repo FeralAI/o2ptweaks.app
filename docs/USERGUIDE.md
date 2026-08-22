@@ -14,7 +14,7 @@ Display and animation controls require the Thor privileged root service. Volume-
 
 ## EZ Root
 
-The root flow checks the active slot and partition layout before every backup, patch, flash, and restore. It requires a 35% battery level, a non-empty image, and an explicit confirmation on the lower display for writes. Cached stock and patched images are hashed with SHA-256 and shown on the dashboard.
+The root flow checks the active slot and partition layout before every backup, patch, flash, and restore. It requires a 35% battery level, a non-empty image, and an explicit confirmation on the lower display for writes. When both partitions exist, `init_boot` is the explicit recovery target; ThorTools blocks rather than silently falling back to `boot` when that target lacks a verified stock image. A stock backup succeeds only after every discovered slot and its independent Download copy are complete.
 
 Each recovery record is bound to its slot, partition, build fingerprint, file size, and hash. Editing, replacing, or carrying an image across an OTA invalidates it; run **Back up available slots** again after a firmware change.
 

@@ -22,6 +22,7 @@ Record the complete property dump for at least these devices:
 ## Recovery images
 
 - Back up every available `boot` and `init_boot` slot.
+- Confirm the dashboard identifies `init_boot` as the recovery target when both partitions are present, and blocks the root flow if that target lacks a verified stock image.
 - Confirm each non-empty image appears in the app recovery folder and `Download`.
 - Compare the SHA-256 values shown by ThorTools with independently calculated hashes.
 - Restart the app and confirm stock images and hashes remain visible.
