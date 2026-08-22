@@ -154,8 +154,11 @@ jobs:
           test -n "$release_apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$release_apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$release_apk" | grep -Fq 'CN=Android Debug'
-          package_name="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$release_apk" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p")"
+          package_info="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$release_apk")"
+          package_name="$(printf '%s\n' "$package_info" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p")"
           test "$package_name" = "dev.adrian.thortools"
+          printf '%s\n' "$package_info" | grep -Fq "versionCode='$THORTOOLS_VERSION_CODE'"
+          printf '%s\n' "$package_info" | grep -Fq "versionName='$THORTOOLS_VERSION_NAME'"
 
       - name: Verify signed release APK
         if: steps.release.outputs.channel != 'alpha'
@@ -163,6 +166,11 @@ jobs:
           release_apk="$(find app/build/outputs/apk/release -type f -name 'thortools-*.apk' -print -quit)"
           test -n "$release_apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$release_apk"
+          package_info="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$release_apk")"
+          package_name="$(printf '%s\n' "$package_info" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p")"
+          test "$package_name" = "dev.adrian.thortools"
+          printf '%s\n' "$package_info" | grep -Fq "versionCode='$THORTOOLS_VERSION_CODE'"
+          printf '%s\n' "$package_info" | grep -Fq "versionName='$THORTOOLS_VERSION_NAME'"
 
       - name: Stage Obtainium APK
         id: apk
