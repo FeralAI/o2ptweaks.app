@@ -38,6 +38,8 @@ The debug APK uses the deterministic fake backend for emulator validation. The a
 
 Release tags use `vMAJOR.MINOR.PATCH-alpha.N`, `vMAJOR.MINOR.PATCH-beta.N`, or `vMAJOR.MINOR.PATCH`. Alpha releases use an automatically debug-signed alpha build with the real Thor backend and do not require repository signing secrets. Beta and stable releases use the production keystore and are uploaded as `thortools-<tag>.apk`.
 
+Do not promote an alpha without completing the [physical Thor validation checklist](docs/PHYSICAL_VALIDATION.md) on both a Snapdragon 865 Thor Lite and a Snapdragon 8 Gen 2 Thor.
+
 ## Credits and support
 
 ThorTools preserves the upstream history and GPLv2 attribution from [FeralAI/o2ptweaks.app](https://github.com/FeralAI/o2ptweaks.app).

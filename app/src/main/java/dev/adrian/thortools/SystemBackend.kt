@@ -332,6 +332,28 @@ class ThorSession(
         }
     }
 
+    fun acknowledgeInterruptedOperation(): Boolean {
+        if (snapshot.operation.status != OperationStatus.INTERRUPTED) return false
+        val acknowledged = clearJournal()
+        snapshot = if (acknowledged) {
+            snapshot.copy(
+                operation = OperationState(
+                    operation = snapshot.operation.operation,
+                    status = OperationStatus.IDLE,
+                    message = "Recovery record acknowledged; review the current Thor state before retrying",
+                ),
+            )
+        } else {
+            snapshot.copy(
+                operation = snapshot.operation.copy(
+                    status = OperationStatus.FAILURE,
+                    message = "Could not clear the interrupted-operation recovery record",
+                ),
+            )
+        }
+        return acknowledged
+    }
+
     fun run(scope: CoroutineScope, operation: ThorOperation, argument: String? = null) {
         if (snapshot.operation.status == OperationStatus.RUNNING) return
         val running = OperationState(operation, OperationStatus.RUNNING, "${operation.name.lowercase().replace('_', ' ')} in progress")

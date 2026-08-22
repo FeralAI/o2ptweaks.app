@@ -5,6 +5,8 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import android.hardware.display.DisplayManager
 import androidx.lifecycle.Lifecycle
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -60,5 +62,41 @@ class ThorToolsInstrumentedTest {
             assertEquals(Lifecycle.State.RESUMED, activity.lifecycle.currentState)
         }
         scenario.close()
+    }
+
+    @Test
+    fun restoresInterruptedOperationStateWithoutRepeatingBackendWork() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        preferences.edit()
+            .putString(AppSettings.JOURNAL_OPERATION_KEY, ThorOperation.FLASH.name)
+            .putString(AppSettings.JOURNAL_MESSAGE_KEY, "flash was interrupted")
+            .commit()
+        var performCount = 0
+        val baseline = SystemBackendFactory.create(context).snapshot()
+        val backend = object : SystemBackend {
+            override fun snapshot(operation: OperationState): ThorSnapshot = baseline.copy(operation = operation)
+
+            override fun perform(operation: ThorOperation, argument: String?): OperationResult {
+                performCount += 1
+                return OperationResult(true, "unexpected backend execution")
+            }
+        }
+        try {
+            val session = ThorSession(context, backend)
+            assertEquals(OperationStatus.INTERRUPTED, session.snapshot.operation.status)
+            session.load()
+            assertEquals(OperationStatus.INTERRUPTED, session.snapshot.operation.status)
+            assertEquals(0, performCount)
+            assertTrue(session.acknowledgeInterruptedOperation())
+            assertEquals(OperationStatus.IDLE, session.snapshot.operation.status)
+            assertFalse(preferences.contains(AppSettings.JOURNAL_OPERATION_KEY))
+            assertFalse(preferences.contains(AppSettings.JOURNAL_MESSAGE_KEY))
+        } finally {
+            preferences.edit()
+                .remove(AppSettings.JOURNAL_OPERATION_KEY)
+                .remove(AppSettings.JOURNAL_MESSAGE_KEY)
+                .commit()
+        }
     }
 }

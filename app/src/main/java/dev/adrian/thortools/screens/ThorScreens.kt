@@ -83,6 +83,14 @@ fun ThorControlScreen(
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
+            if (session.snapshot.operation.status == OperationStatus.INTERRUPTED) {
+                TextButton(
+                    onClick = { session.acknowledgeInterruptedOperation() },
+                    modifier = Modifier.align(Alignment.End).padding(horizontal = 12.dp),
+                ) {
+                    Text("Acknowledge recovery record")
+                }
+            }
             if (section == ThorSection.STATUS) {
                 TextButton(
                     onClick = { session.run(scope, ThorOperation.REFRESH) },
