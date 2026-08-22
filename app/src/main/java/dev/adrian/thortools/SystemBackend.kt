@@ -128,6 +128,9 @@ object ThorOperationGuard {
         if (operation.requiresRootService && !snapshot.rootServiceAvailable) {
             return "The Thor privileged root service is unavailable"
         }
+        if (operation in imageOperations && !snapshot.profile.supports(ThorCapability.BATTERY_STATE)) {
+            return "The Thor battery state is unavailable"
+        }
         if (operation in imageOperations && snapshot.batteryPercent < 35) {
             return "Charge the Thor to at least 35% before image operations"
         }
@@ -137,8 +140,28 @@ object ThorOperationGuard {
         if (operation in imageOperations && !snapshot.backupDestinationWritable) {
             return "The Thor backup destination is not writable"
         }
-        if (operation == ThorOperation.BACKUP && !snapshot.initBootAvailable && !snapshot.bootAvailable) {
-            return "No supported Thor boot partition was found"
+        when (operation) {
+            ThorOperation.BACKUP -> {
+                if (snapshot.rooted) return "Capture stock backups before root is active"
+                if (!snapshot.initBootAvailable && !snapshot.bootAvailable) return "No supported Thor boot partition was found"
+            }
+            ThorOperation.PATCH -> {
+                if (snapshot.rooted) return "The Thor is already rooted; restore stock before preparing another patch"
+                if (!snapshot.magiskInstalled) return "Install Magisk before preparing a root patch"
+                if (!snapshot.backupAvailable) return "Create a stock active-slot backup before patching"
+            }
+            ThorOperation.FLASH -> {
+                if (snapshot.rooted) return "The Thor already reports root access; restore stock before flashing again"
+                if (!snapshot.magiskInstalled) return "Install Magisk before flashing a root patch"
+                if (!snapshot.patchedBackupAvailable) return "Prepare a Magisk-patched active-slot image first"
+            }
+            ThorOperation.RESTORE -> {
+                if (!snapshot.backupAvailable) return "Create a stock active-slot backup before restoring"
+            }
+            ThorOperation.SET_VOLUME_STEPS, ThorOperation.SET_BOOT_ANIMATION -> {
+                if (!snapshot.magiskInstalled || !snapshot.rooted) return "Root the Thor with Magisk before changing module settings"
+            }
+            else -> Unit
         }
         return null
     }
@@ -148,11 +171,12 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
     override fun snapshot(operation: OperationState): ThorSnapshot {
         val properties = SystemUtils.getDeviceProperties()
         val rootService = RootUtils.hasPServer()
-        val rooted = RootUtils.isDeviceRooted
+        val rooted = RootUtils.isDeviceRooted(context, rootService)
         val magisk = MagiskUtil.hasMagiskPackage(context)
         val battery = SystemUtils.getBatteryPercent(context)
-        val initBoot = rootService && RootUtils.checkFileExistsRoot(context, "/dev/block/by-name/init_boot${properties.slot}")
-        val boot = rootService && RootUtils.checkFileExistsRoot(context, "/dev/block/by-name/boot${properties.slot}")
+        val prefs = AppSettings.getSharedPrefs(context)
+        val initBoot = rootService && RootUtils.hasPartition(context, "init_boot", properties.slot)
+        val boot = rootService && RootUtils.hasPartition(context, "boot", properties.slot)
         val backupDestination = FileUtils.isBackupDestinationWritable(context)
         val capabilities = buildSet {
             if (rootService) add(ThorCapability.ROOT_SERVICE)
@@ -167,9 +191,9 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
         return ThorSnapshot(
             profile = DeviceProfile.detect(properties).copy(capabilities = capabilities),
             batteryPercent = battery ?: 0,
-            lcdDensity = SystemUtils.getPropLcdDensity(),
-            volumeSteps = SystemUtils.getPropVolumeSteps(),
-            animationSpeed = AppSettings.getAnimationSpeed(AppSettings.getSharedPrefs(context)),
+            lcdDensity = AppSettings.getDpi(prefs, SystemUtils.getPropLcdDensity()),
+            volumeSteps = AppSettings.getVolumeSteps(prefs, SystemUtils.getPropVolumeSteps()),
+            animationSpeed = AppSettings.getAnimationSpeed(prefs),
             activeSlot = properties.slot.ifBlank { "unknown" },
             kernelVersion = SystemUtils.getKernelVersion(context),
             rootServiceAvailable = rootService,
@@ -223,7 +247,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             }
             ThorOperation.CLEAR_CACHE -> {
                 val cleared = PatchUtils.clearBootCache(context)
-                OperationResult(cleared, if (cleared) "Cached images cleared" else "Some cached images could not be removed")
+                OperationResult(cleared, if (cleared) "Patched images cleared; stock backups retained" else "Some patched images could not be removed")
             }
             ThorOperation.REBOOT -> {
                 val rebooted = RootUtils.reboot(context)

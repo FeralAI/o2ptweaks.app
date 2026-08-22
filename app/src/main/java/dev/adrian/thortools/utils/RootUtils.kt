@@ -2,8 +2,8 @@ package dev.adrian.thortools.utils
 
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
 import android.util.Log
+import dev.adrian.thortools.DeviceProfile
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
@@ -39,9 +39,7 @@ object RootUtils {
     private const val ASSET_SUBFOLDER = "app"
 
     val isDeviceRooted: Boolean
-        get() = checkRootMethod1() || checkRootMethod2() || checkRootMethod3()
-
-    private fun checkRootMethod1(): Boolean = Build.TAGS?.contains("test-keys") == true
+        get() = checkRootMethod2() || checkRootMethod3()
 
     private fun checkRootMethod2(): Boolean = arrayOf(
         "/system/app/Superuser.apk",
@@ -73,6 +71,15 @@ object RootUtils {
 
     fun hasPServer(): Boolean = RootExec().pServerAvailable
 
+    fun isDeviceRooted(context: Context, rootServiceAvailable: Boolean): Boolean {
+        if (!rootServiceAvailable) return isDeviceRooted
+        val activeRoot = runRootCommand(
+            context,
+            "if [ -x /data/adb/magisk/magisk ] || [ -x /data/adb/ksu/bin/ksud ] || [ -x /data/adb/ap/bin/apd ]; then printf '%s' 1; else printf '%s' 0; fi",
+        )
+        return activeRoot == "1" || isDeviceRooted
+    }
+
     fun runRootCommand(context: Context, command: String): String? {
         val result = RootExec().executeAsRoot(command)
         return result.getOrNull().also { Log.d(TAG, "root command completed: ${result.isSuccess}") }
@@ -95,13 +102,13 @@ object RootUtils {
     private fun shellQuote(value: String): String = "'${value.replace("'", "'\\''")}'"
 
     fun checkFileExistsRoot(context: Context, path: String): Boolean =
-        runRootCommand(context, "[ -e \"$path\" ] && echo 1 || echo 0") == "1"
+        runRootCommand(context, "[ -e ${shellQuote(path)} ] && printf '%s' 1 || printf '%s' 0") == "1"
 
     fun reboot(context: Context): Boolean =
         RootExec().executeAsRoot("reboot >/dev/null 2>&1 & printf '%s' 0").getOrNull() == "0"
 
     fun rootCopy(context: Context, from: String, to: String): Boolean =
-        File(from).exists() && runRootAction(context, "cp -afv \"$from\" \"$to\"")
+        File(from).exists() && runRootAction(context, "cp -afv ${shellQuote(from)} ${shellQuote(to)}")
 
     fun isPackageInstalled(context: Context, packageName: String): Boolean = try {
         context.packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
@@ -110,8 +117,16 @@ object RootUtils {
         false
     }
 
+    fun findPartition(context: Context, partitionName: String, slot: String): String? {
+        val normalizedSlot = DeviceProfile.normalizeSlot(slot)
+        if (normalizedSlot.isBlank() || !partitionName.matches(Regex("[A-Za-z0-9_.-]+"))) return null
+        val name = "$partitionName$normalizedSlot"
+        val command = "for base in /dev/block/by-name /dev/block/bootdevice/by-name /dev/block/platform/*/by-name /dev/block/platform/*/*/by-name /dev/block/platform/*/*/*/by-name; do path=\"\$base/$name\"; if [ -e \"\$path\" ]; then printf '%s' \"\$path\"; break; fi; done"
+        return runRootCommand(context, command)?.trim()?.ifBlank { null }
+    }
+
     fun hasPartition(context: Context, partitionName: String, slot: String): Boolean =
-        hasPServer() && checkFileExistsRoot(context, "/dev/block/by-name/$partitionName$slot")
+        hasPServer() && findPartition(context, partitionName, slot) != null
 
     fun installThorToolsMagiskModule(context: Context): Boolean {
         val modulePath = "$MODULE_DIR/thortools"

@@ -15,23 +15,16 @@ object FileUtils {
     }
 
     fun copyAsset(context: Context, assetFile: String, dstFile: String): Boolean {
-        try {
-            val inputStream = context.assets.open(assetFile)
-
+        return try {
             val apkFile = File(dstFile)
-            if (apkFile.exists())
-                apkFile.delete()
-
-            val outputStream = FileOutputStream(apkFile)
-            inputStream.copyTo(outputStream)
-            inputStream.close()
-            outputStream.close()
-
-            return apkFile.exists()
-        }
-        catch (e: IOException) {
+            if (apkFile.exists()) apkFile.delete()
+            context.assets.open(assetFile).use { input ->
+                FileOutputStream(apkFile).use { output -> input.copyTo(output) }
+            }
+            apkFile.isFile
+        } catch (e: IOException) {
             Log.e(TAG, "Error copying asset to Download folder", e)
-            return false
+            false
         }
     }
 
@@ -55,15 +48,12 @@ object FileUtils {
     fun saveFile(path: String, content: String): Boolean {
         val file = File(path)
 
-        try {
-            FileOutputStream(file).use {
-                it.write(content.toByteArray())
-            }
-
-            return true
-        }
-        catch (e: Exception) {
-            return false
+        return try {
+            file.parentFile?.mkdirs()
+            FileOutputStream(file).use { it.write(content.toByteArray()) }
+            file.isFile
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -72,8 +62,7 @@ object FileUtils {
     }
 
     fun getPathBackup(context: Context, relativePath: String? = null): String {
-        val path = "${context.getExternalFilesDir(null)}${relativePath}"
-        return path
+        return appendPath(context.getExternalFilesDir(null), relativePath)
     }
 
     fun isBackupDestinationWritable(context: Context): Boolean {
@@ -83,17 +72,20 @@ object FileUtils {
     }
 
     fun getPathWorking(context: Context, relativePath: String? = null): String {
-        val path = "${context.getExternalFilesDir(null)}${relativePath}"
-        return path
+        return appendPath(context.getExternalFilesDir(null), relativePath)
     }
 
     fun getPathAppFiles(context: Context, relativePath: String? = null): String {
-        val path = "${context.filesDir}/app${relativePath}"
-        return path
+        return appendPath(File(context.filesDir, "app"), relativePath)
     }
 
     fun getPathSupportFiles(context: Context, relativePath: String? = null): String {
-        val path = "${context.filesDir}/app/support${relativePath}"
-        return path
+        return appendPath(File(context.filesDir, "app/support"), relativePath)
+    }
+
+    private fun appendPath(base: File?, relativePath: String?): String {
+        if (base == null) return ""
+        val relative = relativePath?.trimStart('/') ?: return base.absolutePath
+        return File(base, relative).absolutePath
     }
 }

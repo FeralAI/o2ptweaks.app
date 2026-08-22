@@ -9,14 +9,16 @@ import kotlin.concurrent.thread
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_LOCKED_BOOT_COMPLETED) return
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         val pendingResult = goAsync()
         thread(name = "ThorToolsBoot") {
             try {
                 if (!DeviceProfile.detect(SystemUtils.getDeviceProperties()).isThor || !RootUtils.hasPServer()) return@thread
                 val prefs = AppSettings.getSharedPrefs(context)
-                RootUtils.setDpi(context, AppSettings.getDpi(prefs))
-                RootUtils.setAnimationSpeed(context, AppSettings.getAnimationSpeed(prefs))
+                val dpi = AppSettings.getDpi(prefs)
+                if (dpi in AppSettings.DPI_MIN..AppSettings.DPI_MAX) RootUtils.setDpi(context, dpi)
+                val animationSpeed = AppSettings.getAnimationSpeed(prefs)
+                if (animationSpeed.isFinite() && animationSpeed in 0f..1f) RootUtils.setAnimationSpeed(context, animationSpeed)
                 AppSettings.save(context)
             } finally {
                 pendingResult.finish()

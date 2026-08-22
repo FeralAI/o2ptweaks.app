@@ -16,6 +16,8 @@ class ThorDeviceProfileTest {
         assertTrue(DeviceProfile.detect(DeviceProperties(product = "AYNThorMax")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(product = "AYN Thor Max")).isThor)
         assertTrue(DeviceProfile.detect(DeviceProperties(manufacturer = "AYN", model = "Thor")).isThor)
+        assertTrue(DeviceProfile.detect(DeviceProperties(hardware = "thor_lite")).isThor)
+        assertTrue(DeviceProfile.detect(DeviceProperties(board = "thor_max_board")).isThor)
     }
 
     @Test

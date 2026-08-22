@@ -11,7 +11,7 @@ The app enters diagnostics-only mode on other devices or when the Thor privilege
 ## Features
 
 - Thor hardware, firmware, battery, slot, root, Magisk, and partition diagnostics
-- EZ Root backup, Magisk patch, active-slot flash, stock restore, and cache management
+- EZ Root backup, Magisk patch, active-slot flash, stock restore, and safe patched-image cache management
 - DPI and animation speed controls
 - Rooted volume-step control
 - Optional boot-animation disable through a ThorTools Magisk module

@@ -1,5 +1,9 @@
 #!/system/bin/sh
 
+SCRIPT_DIR="${0%/*}"
+[ "$SCRIPT_DIR" = "$0" ] && SCRIPT_DIR=.
+. "$SCRIPT_DIR/partition_path.sh"
+
 WORKING_PATH="${THORTOOLS_WORKING_PATH:-/storage/emulated/0/Android/data/dev.adrian.thortools/files}"
 DOWNLOAD_PATH="/storage/emulated/0/Download"
 LOG_FILE="$WORKING_PATH/boot.patch.log"

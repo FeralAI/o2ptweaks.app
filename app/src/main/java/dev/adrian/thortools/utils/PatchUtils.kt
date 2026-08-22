@@ -54,9 +54,7 @@ object PatchUtils {
         var success = true
         slots.forEach { slot ->
             listOf(
-                "/boot$slot.img",
                 "/boot_patched$slot.img",
-                "/init_boot$slot.img",
                 "/init_boot_patched$slot.img",
             ).forEach { relativePath ->
                 val path = FileUtils.getPathBackup(context, relativePath)

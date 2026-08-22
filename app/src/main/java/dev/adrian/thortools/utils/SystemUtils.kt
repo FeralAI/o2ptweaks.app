@@ -21,16 +21,22 @@ class RuntimeExecResult(
 object SystemUtils {
     fun getDeviceProperties(): DeviceProperties = DeviceProperties(
         manufacturer = getProp("ro.product.manufacturer"),
+        brand = getProp("ro.product.brand"),
         model = getProp("ro.product.model").ifBlank { getProp("ro.product.vendor.model") },
         device = getProp("ro.product.device"),
         product = getProp("ro.product.name"),
+        board = getProp("ro.product.board"),
+        hardware = getProp("ro.hardware").ifBlank { getProp("ro.boot.hardware") },
+        soc = getProp("ro.soc.model").ifBlank { getProp("ro.board.platform") },
         platform = getProp("ro.fota.platform"),
         firmware = getProp("ro.fota.version").ifBlank { getProp("ro.build.version.release") },
         buildId = getProp("ro.build.id"),
         buildDisplayId = getProp("ro.build.display.id"),
         buildDate = getProp("ro.build.date"),
         serial = getProp("ro.serialno"),
-        slot = DeviceProfile.normalizeSlot(getProp("ro.boot.slot_suffix")),
+        slot = DeviceProfile.normalizeSlot(
+            getProp("ro.boot.slot_suffix").ifBlank { getProp("ro.boot.slot") },
+        ),
     )
 
     fun getKernelVersion(context: Context): String =

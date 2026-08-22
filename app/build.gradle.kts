@@ -73,7 +73,8 @@ android {
         variant.outputs
             .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
             .forEach { output ->
-                val outputFileName = "thortools-${variant.versionName}-${variant.buildType.name}.apk"
+                val buildTypeSuffix = if (variant.buildType.name == "debug") "" else "-${variant.buildType.name}"
+                val outputFileName = "thortools-${variant.versionName}$buildTypeSuffix.apk"
                 output.outputFileName = outputFileName
             }
     }

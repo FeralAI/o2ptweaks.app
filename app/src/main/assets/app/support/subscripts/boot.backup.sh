@@ -1,5 +1,9 @@
 #!/system/bin/sh
 
+SCRIPT_DIR="${0%/*}"
+[ "$SCRIPT_DIR" = "$0" ] && SCRIPT_DIR=.
+. "$SCRIPT_DIR/partition_path.sh"
+
 WORKING_PATH="${THORTOOLS_WORKING_PATH:-/storage/emulated/0/Android/data/dev.adrian.thortools/files}"
 DOWNLOAD_PATH="/storage/emulated/0/Download"
 LOG_FILE="$WORKING_PATH/backup.boot.log"
@@ -9,7 +13,8 @@ echo "ThorTools boot backup started" > "$LOG_FILE"
 copied=0
 
 for ACTIVE_SLOT in _a _b; do
-    BOOT_DEVICE="/dev/block/by-name/boot$ACTIVE_SLOT"
+    BOOT_DEVICE="$(resolve_partition "boot$ACTIVE_SLOT")"
+    [ -n "$BOOT_DEVICE" ] || continue
     OUTPUT_FILE="$WORKING_PATH/boot$ACTIVE_SLOT.img"
     TEMP_FILE="$OUTPUT_FILE.tmp"
     if [ -e "$BOOT_DEVICE" ]; then

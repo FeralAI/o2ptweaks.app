@@ -11,6 +11,11 @@ class ThorOperationGuardTest {
     }
 
     @Test
+    fun allowsStockBackupBeforeMagiskIsInstalled() {
+        assertNull(ThorOperationGuard.validate(snapshot(magiskInstalled = false), ThorOperation.BACKUP))
+    }
+
+    @Test
     fun rejectsMutationsOutsideThor() {
         val nonThor = snapshot().copy(profile = DeviceProfile.detect(DeviceProperties(model = "AYN Loki")))
         assertNull(ThorOperationGuard.validate(nonThor, ThorOperation.REFRESH))
@@ -35,6 +40,10 @@ class ThorOperationGuardTest {
             ThorOperationGuard.validate(snapshot(batteryPercent = 34), ThorOperation.BACKUP),
         )
         assertEquals(
+            "The Thor battery state is unavailable",
+            ThorOperationGuard.validate(snapshot(batteryAvailable = false), ThorOperation.BACKUP),
+        )
+        assertEquals(
             "The active Thor slot could not be determined",
             ThorOperationGuard.validate(snapshot(activeSlot = "unknown"), ThorOperation.BACKUP),
         )
@@ -48,6 +57,40 @@ class ThorOperationGuardTest {
         )
     }
 
+    @Test
+    fun protectsStockBackupAndPatchPrerequisites() {
+        assertEquals(
+            "Capture stock backups before root is active",
+            ThorOperationGuard.validate(snapshot(rooted = true), ThorOperation.BACKUP),
+        )
+        assertEquals(
+            "Create a stock active-slot backup before patching",
+            ThorOperationGuard.validate(snapshot(magiskInstalled = true), ThorOperation.PATCH),
+        )
+        assertEquals(
+            "Install Magisk before preparing a root patch",
+            ThorOperationGuard.validate(snapshot(magiskInstalled = false, backupAvailable = true), ThorOperation.PATCH),
+        )
+    }
+
+    @Test
+    fun keepsRestoreAvailableAfterRootFlash() {
+        assertNull(
+            ThorOperationGuard.validate(
+                snapshot(rooted = true, backupAvailable = true),
+                ThorOperation.RESTORE,
+            ),
+        )
+    }
+
+    @Test
+    fun protectsMagiskModuleSettings() {
+        assertEquals(
+            "Root the Thor with Magisk before changing module settings",
+            ThorOperationGuard.validate(snapshot(rooted = false), ThorOperation.SET_VOLUME_STEPS),
+        )
+    }
+
     private fun snapshot(
         rootServiceAvailable: Boolean = true,
         batteryPercent: Int = 80,
@@ -55,9 +98,15 @@ class ThorOperationGuardTest {
         backupDestinationWritable: Boolean = true,
         initBootAvailable: Boolean = true,
         bootAvailable: Boolean = true,
+        rooted: Boolean = false,
+        magiskInstalled: Boolean = true,
+        backupAvailable: Boolean = false,
+        batteryAvailable: Boolean = true,
     ): ThorSnapshot {
         return ThorSnapshot(
-            profile = DeviceProfile.detect(DeviceProperties(model = "AYN Thor")),
+            profile = DeviceProfile.detect(DeviceProperties(model = "AYN Thor")).copy(
+                capabilities = if (batteryAvailable) setOf(ThorCapability.BATTERY_STATE) else emptySet(),
+            ),
             batteryPercent = batteryPercent,
             lcdDensity = 320,
             volumeSteps = 15,
@@ -65,12 +114,12 @@ class ThorOperationGuardTest {
             activeSlot = activeSlot,
             kernelVersion = "test",
             rootServiceAvailable = rootServiceAvailable,
-            rooted = false,
-            magiskInstalled = true,
+            rooted = rooted,
+            magiskInstalled = magiskInstalled,
             initBootAvailable = initBootAvailable,
             bootAvailable = bootAvailable,
             backupDestinationWritable = backupDestinationWritable,
-            backupAvailable = false,
+            backupAvailable = backupAvailable,
             patchedBackupAvailable = false,
             operation = OperationState(),
         )

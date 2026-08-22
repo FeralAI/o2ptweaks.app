@@ -30,12 +30,13 @@ object MagiskUtil {
         if (RootUtils.checkFileExistsRoot(context, "$MAGISK_DIR/magisk")) return MAGISK_DIR
         if (!hasMagiskPackage(context)) return ""
         val localPath = FileUtils.getPathAppFiles(context, "/magisk/magisk")
-        if (!File(localPath).exists()) {
+        val localMagisk = File(localPath)
+        if (!localMagisk.isFile || localMagisk.length() == 0L) {
             val temporaryDirectory = FileUtils.getPathAppFiles(context, "/magisk")
             RootUtils.runRootCommand(context, "rm -rf \"$temporaryDirectory\"")
             installLocalMagiskUtils(context)
         }
-        return if (File(localPath).exists()) FileUtils.getPathAppFiles(context, "/magisk") else ""
+        return if (localMagisk.isFile && localMagisk.length() > 0L) FileUtils.getPathAppFiles(context, "/magisk") else ""
     }
 
     fun hasMagiskPackage(context: Context): Boolean = RootUtils.isPackageInstalled(context, MAGISK_PACKAGE_NAME)

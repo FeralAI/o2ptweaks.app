@@ -21,9 +21,13 @@ enum class ThorCapability {
 
 data class DeviceProperties(
     val manufacturer: String = "",
+    val brand: String = "",
     val model: String = "",
     val device: String = "",
     val product: String = "",
+    val board: String = "",
+    val hardware: String = "",
+    val soc: String = "",
     val platform: String = "",
     val firmware: String = "",
     val buildId: String = "",
@@ -64,9 +68,13 @@ object DeviceProfile {
     fun detect(properties: DeviceProperties): ThorDeviceProfile {
         val searchable = listOf(
             properties.manufacturer,
+            properties.brand,
             properties.model,
             properties.device,
             properties.product,
+            properties.board,
+            properties.hardware,
+            properties.soc,
             properties.platform,
         ).joinToString(" ").normalized()
         val isThor = thorPattern.containsMatchIn(searchable)

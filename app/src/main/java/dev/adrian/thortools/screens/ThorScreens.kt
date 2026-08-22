@@ -42,10 +42,12 @@ import dev.adrian.thortools.DeviceProfile
 import dev.adrian.thortools.OperationStatus
 import dev.adrian.thortools.ThorCapability
 import dev.adrian.thortools.ThorOperation
+import dev.adrian.thortools.ThorOperationGuard
 import dev.adrian.thortools.ThorSession
 import dev.adrian.thortools.ThorSnapshot
 import dev.adrian.thortools.ThorVariant
 import dev.adrian.thortools.utils.PatchUtils
+import dev.adrian.thortools.utils.getLogFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -104,6 +106,7 @@ fun ThorDashboardScreen(session: ThorSession, context: Context, modifier: Modifi
             Text("Upper display dashboard", style = MaterialTheme.typography.titleMedium)
             DashboardIdentity(session.snapshot)
             DashboardCapabilities(session.snapshot)
+            DashboardOperations(session.snapshot)
             DashboardOperation(session.snapshot, context)
             if (session.snapshot.stockBackupSlots.isNotEmpty() || session.snapshot.patchedBackupSlots.isNotEmpty()) {
                 DashboardHashes(context, session.snapshot)
@@ -152,6 +155,7 @@ private fun StatusPanel(snapshot: ThorSnapshot, context: Context) {
     ) {
         DashboardIdentity(snapshot)
         DashboardCapabilities(snapshot)
+        DashboardOperations(snapshot)
         DashboardOperation(snapshot, context)
         if (snapshot.stockBackupSlots.isNotEmpty() || snapshot.patchedBackupSlots.isNotEmpty()) DashboardHashes(context, snapshot)
     }
@@ -165,8 +169,12 @@ private fun DashboardIdentity(snapshot: ThorSnapshot) {
             DataLine("Model", snapshot.profile.properties.model)
             DataLine("Variant", snapshot.profile.variant.label())
             DataLine("Manufacturer", snapshot.profile.properties.manufacturer)
+            DataLine("Brand", snapshot.profile.properties.brand)
             DataLine("Device", snapshot.profile.properties.device)
             DataLine("Product", snapshot.profile.properties.product)
+            DataLine("Board", snapshot.profile.properties.board)
+            DataLine("Hardware", snapshot.profile.properties.hardware)
+            DataLine("SoC", snapshot.profile.properties.soc)
             DataLine("Platform", snapshot.profile.properties.platform)
             DataLine("Firmware", snapshot.profile.properties.firmware)
             DataLine("Build", snapshot.profile.properties.buildDisplayId.ifBlank { snapshot.profile.properties.buildId })
@@ -200,6 +208,32 @@ private fun DashboardCapabilities(snapshot: ThorSnapshot) {
 }
 
 @Composable
+private fun DashboardOperations(snapshot: ThorSnapshot) {
+    val operations = listOf(
+        ThorOperation.BACKUP to "Stock backup",
+        ThorOperation.PATCH to "Prepare patch",
+        ThorOperation.FLASH to "Flash patch",
+        ThorOperation.RESTORE to "Restore stock",
+    )
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text("Operation readiness", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            operations.forEach { (operation, label) ->
+                val reason = ThorOperationGuard.validate(snapshot, operation)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(label)
+                    Text(
+                        text = if (reason == null) "Ready" else "Blocked",
+                        color = if (reason == null) Color(0xff2e7d32) else MaterialTheme.colorScheme.error,
+                    )
+                }
+                if (reason != null) Text(reason, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@Composable
 private fun DashboardOperation(snapshot: ThorSnapshot, context: Context) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -210,6 +244,7 @@ private fun DashboardOperation(snapshot: ThorSnapshot, context: Context) {
             Text(snapshot.operation.status.label())
             Text(snapshot.operation.message)
             Text("Recovery folder: ${context.getExternalFilesDir(null)?.absolutePath ?: "Unavailable"}", style = MaterialTheme.typography.bodySmall)
+            Text("Latest operation log: ${getLogFile(context)?.absolutePath ?: "Unavailable"}", style = MaterialTheme.typography.bodySmall)
             Text("Download folder: /storage/emulated/0/Download", style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -217,13 +252,13 @@ private fun DashboardOperation(snapshot: ThorSnapshot, context: Context) {
 
 @Composable
 private fun DashboardHashes(context: Context, snapshot: ThorSnapshot) {
-    val hashes by produceState<Map<String, String>>(emptyMap(), snapshot.stockBackupSlots, snapshot.patchedBackupSlots, snapshot.operation) {
+    val hashes by produceState<Map<String, String>>(emptyMap(), snapshot.stockBackupSlots, snapshot.patchedBackupSlots, snapshot.operation.status == OperationStatus.RUNNING) {
         value = withContext(Dispatchers.IO) { PatchUtils.imageHashes(context) }
     }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Image hashes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            hashes.forEach { (name, hash) ->
+            hashes.toSortedMap().forEach { (name, hash) ->
                 Text("$name: $hash", style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -240,7 +275,7 @@ private fun TweaksPanel(session: ThorSession, context: Context) {
     var skipBootAnimation by remember { mutableStateOf(AppSettings.getSkipBootAnimation(prefs)) }
     val enabled = snapshot.profile.isThor && snapshot.rootServiceAvailable
     val actionReady = snapshot.operation.status != OperationStatus.RUNNING
-    val moduleReady = enabled && snapshot.rooted && snapshot.magiskInstalled
+    val moduleReady = actionReady && ThorOperationGuard.validate(snapshot, ThorOperation.SET_VOLUME_STEPS) == null
 
     Column(
         modifier = Modifier.fillMaxWidth().fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -321,10 +356,10 @@ private fun RootPanel(session: ThorSession, context: Context) {
     var pendingOperation by remember { mutableStateOf<ThorOperation?>(null) }
     val thorReady = snapshot.profile.isThor
     val actionReady = snapshot.operation.status != OperationStatus.RUNNING
-    val rootReady = snapshot.profile.isThor && snapshot.rootServiceAvailable && snapshot.activeSlot != "unknown"
-    val imageReady = rootReady && snapshot.batteryPercent >= 35 && snapshot.backupDestinationWritable && (snapshot.initBootAvailable || snapshot.bootAvailable)
-    val flashReady = imageReady && snapshot.rooted.not() && snapshot.magiskInstalled && snapshot.patchedBackupAvailable
-    val restoreReady = imageReady && snapshot.backupAvailable
+    val rootReady = snapshot.profile.isThor && snapshot.rootServiceAvailable && snapshot.activeSlot in setOf("_a", "_b")
+    fun operationReady(operation: ThorOperation): Boolean =
+        actionReady && ThorOperationGuard.validate(snapshot, operation) == null
+    val backupReason = if (rootReady) ThorOperationGuard.validate(snapshot, ThorOperation.BACKUP) else null
 
     Column(
         modifier = Modifier.fillMaxWidth().fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -332,16 +367,16 @@ private fun RootPanel(session: ThorSession, context: Context) {
     ) {
         Text("EZ Root for AYN Thor", style = MaterialTheme.typography.headlineSmall)
         Text("ThorTools checks the active slot and partition layout again before each image operation. Backups are copied to the app folder and Download folder.")
-        Button(enabled = actionReady && thorReady && !snapshot.magiskInstalled, onClick = { session.run(scope, ThorOperation.INSTALL_MAGISK) }, modifier = Modifier.fillMaxWidth()) { Text(if (snapshot.magiskInstalled) "Magisk installed" else "Download Magisk") }
-        Button(enabled = actionReady && imageReady && !snapshot.rooted && snapshot.magiskInstalled && snapshot.stockBackupSlots.size < 2, onClick = { pendingOperation = ThorOperation.BACKUP }, modifier = Modifier.fillMaxWidth()) { Text("Back up available slots (${snapshot.stockBackupSlots.size}/2 ready)") }
-        Button(enabled = actionReady && imageReady && !snapshot.rooted && snapshot.magiskInstalled && snapshot.backupAvailable && !snapshot.patchedBackupAvailable, onClick = { pendingOperation = ThorOperation.PATCH }, modifier = Modifier.fillMaxWidth()) { Text("Prepare root patch") }
-        Button(enabled = actionReady && flashReady, onClick = { pendingOperation = ThorOperation.FLASH }, modifier = Modifier.fillMaxWidth()) { Text("Flash active-slot patch") }
-        Button(enabled = actionReady && restoreReady, onClick = { pendingOperation = ThorOperation.RESTORE }, modifier = Modifier.fillMaxWidth()) { Text("Restore stock image") }
-        OutlinedButton(enabled = actionReady && rootReady, onClick = { pendingOperation = ThorOperation.REBOOT }, modifier = Modifier.fillMaxWidth()) { Text("Reboot Thor") }
-        OutlinedButton(enabled = actionReady && snapshot.profile.isThor && (snapshot.backupAvailable || snapshot.patchedBackupAvailable), onClick = { session.run(scope, ThorOperation.CLEAR_CACHE) }, modifier = Modifier.fillMaxWidth()) { Text("Clear cached images") }
+        Button(enabled = operationReady(ThorOperation.INSTALL_MAGISK) && !snapshot.magiskInstalled, onClick = { session.run(scope, ThorOperation.INSTALL_MAGISK) }, modifier = Modifier.fillMaxWidth()) { Text(if (snapshot.magiskInstalled) "Magisk installed" else "Download Magisk") }
+        Button(enabled = operationReady(ThorOperation.BACKUP) && snapshot.stockBackupSlots.size < 2, onClick = { pendingOperation = ThorOperation.BACKUP }, modifier = Modifier.fillMaxWidth()) { Text("Back up available slots (${snapshot.stockBackupSlots.size}/2 ready)") }
+        Button(enabled = operationReady(ThorOperation.PATCH) && !snapshot.patchedBackupAvailable, onClick = { pendingOperation = ThorOperation.PATCH }, modifier = Modifier.fillMaxWidth()) { Text("Prepare root patch") }
+        Button(enabled = operationReady(ThorOperation.FLASH), onClick = { pendingOperation = ThorOperation.FLASH }, modifier = Modifier.fillMaxWidth()) { Text("Flash active-slot patch") }
+        Button(enabled = operationReady(ThorOperation.RESTORE), onClick = { pendingOperation = ThorOperation.RESTORE }, modifier = Modifier.fillMaxWidth()) { Text("Restore stock image") }
+        OutlinedButton(enabled = operationReady(ThorOperation.REBOOT), onClick = { pendingOperation = ThorOperation.REBOOT }, modifier = Modifier.fillMaxWidth()) { Text("Reboot Thor") }
+        OutlinedButton(enabled = operationReady(ThorOperation.CLEAR_CACHE) && snapshot.patchedBackupSlots.isNotEmpty(), onClick = { pendingOperation = ThorOperation.CLEAR_CACHE }, modifier = Modifier.fillMaxWidth()) { Text("Clear patched cache") }
         if (!thorReady) Text("This device is in diagnostics-only mode because it is not an AYN Thor.", color = MaterialTheme.colorScheme.error)
         if (thorReady && !rootReady) Text("This Thor is in diagnostics-only mode until the privileged service and active slot are available.", color = MaterialTheme.colorScheme.error)
-        if (rootReady && !imageReady) Text("Image operations require a supported partition, at least 35% battery, and writable backup storage.", color = MaterialTheme.colorScheme.error)
+        backupReason?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     }
 
     pendingOperation?.let { operation ->
@@ -351,14 +386,16 @@ private fun RootPanel(session: ThorSession, context: Context) {
             ThorOperation.FLASH -> "Flash root patch?"
             ThorOperation.RESTORE -> "Restore stock image?"
             ThorOperation.REBOOT -> "Reboot Thor?"
+            ThorOperation.CLEAR_CACHE -> "Clear patched cache?"
             else -> "Confirm operation?"
         }
         val message = when (operation) {
             ThorOperation.BACKUP -> "This reads both available Thor boot slots and stores stock images in the recovery folder. Confirm on the lower display to continue."
             ThorOperation.PATCH -> "This asks Magisk to patch the current active-slot stock image. Confirm on the lower display to continue."
             ThorOperation.FLASH -> "This writes the patched image to the current active Thor slot. Reboot from the lower display after confirming that both stock backups are stored safely."
-            ThorOperation.RESTORE -> "This writes the stock image to the current active Thor slot and reboots the device."
+            ThorOperation.RESTORE -> "This writes the stock image to the current active Thor slot. Reboot the Thor after the operation completes."
             ThorOperation.REBOOT -> "This reboots the Thor without changing its partitions."
+            ThorOperation.CLEAR_CACHE -> "This removes Magisk-patched images from the recovery folder but keeps all stock backups available for restore."
             else -> "Confirm this operation."
         }
         AlertDialog(

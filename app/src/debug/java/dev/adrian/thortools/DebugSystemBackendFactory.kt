@@ -82,15 +82,13 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                 profile = state.profile.copy(capabilities = state.profile.capabilities - ThorCapability.ROOTED),
             )
             ThorOperation.CLEAR_CACHE -> {
-                listOf("boot", "init_boot", "boot_patched", "init_boot_patched").forEach { prefix ->
+                listOf("boot_patched", "init_boot_patched").forEach { prefix ->
                     listOf("_a", "_b").forEach { slot ->
                         File(context.getExternalFilesDir(null), "$prefix$slot.img").delete()
                     }
                 }
                 state = state.copy(
-                    backupAvailable = false,
                     patchedBackupAvailable = false,
-                    stockBackupSlots = emptySet(),
                     patchedBackupSlots = emptySet(),
                 )
             }

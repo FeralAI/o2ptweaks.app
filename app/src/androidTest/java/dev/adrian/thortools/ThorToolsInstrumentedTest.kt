@@ -28,6 +28,19 @@ class ThorToolsInstrumentedTest {
     }
 
     @Test
+    fun clearingPatchedCacheKeepsStockBackups() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val backend = SystemBackendFactory.create(context)
+        assertTrue(backend.perform(ThorOperation.BACKUP).success)
+        assertTrue(backend.perform(ThorOperation.PATCH).success)
+        assertTrue(backend.snapshot().patchedBackupAvailable)
+        assertTrue(backend.perform(ThorOperation.CLEAR_CACHE).success)
+        val snapshot = backend.snapshot()
+        assertEquals(setOf("_a", "_b"), snapshot.stockBackupSlots)
+        assertTrue(snapshot.patchedBackupSlots.isEmpty())
+    }
+
+    @Test
     fun thorAvdExposesLowerDisplayGeometry() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val displayManager = context.getSystemService(DisplayManager::class.java)

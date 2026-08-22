@@ -16,6 +16,8 @@ Display and animation controls require the Thor privileged root service. Volume-
 
 The root flow checks the active slot and partition layout before every backup, patch, flash, and restore. It requires a 35% battery level, a non-empty image, and an explicit confirmation on the lower display for writes. Cached stock and patched images are hashed with SHA-256 and shown on the dashboard.
 
+The lower-screen **Clear patched cache** action removes only Magisk-patched images. Stock backups remain available for restoration.
+
 ## Recovery
 
 Restore stock before installing an OTA. If the app is interrupted, the next launch shows the interrupted operation in the dashboard without repeating it. Keep the Download-folder copies of the stock images until the Thor has rebooted successfully.
