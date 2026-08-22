@@ -185,6 +185,7 @@ private fun DashboardIdentity(snapshot: ThorSnapshot) {
             DataLine("Root state", if (snapshot.rooted) "Rooted" else "Not rooted")
             DataLine("Magisk", if (snapshot.magiskInstalled) "Installed" else "Not installed")
             DataLine("Stock backups", "${snapshot.stockBackupSlots.size}/2 slots")
+            DataLine("Stock restore source", if (snapshot.stockRestoreAvailable) "Available" else "Unavailable")
             DataLine("Patched backups", "${snapshot.patchedBackupSlots.size}/2 slots")
             DataLine("Battery", if (snapshot.batteryPercent > 0) "${snapshot.batteryPercent}%" else "Unavailable")
             DataLine("Kernel", snapshot.kernelVersion.ifBlank { "Unavailable" })
@@ -255,11 +256,14 @@ private fun DashboardHashes(context: Context, snapshot: ThorSnapshot) {
     val hashes by produceState<Map<String, String>>(emptyMap(), snapshot.stockBackupSlots, snapshot.patchedBackupSlots, snapshot.operation.status == OperationStatus.RUNNING) {
         value = withContext(Dispatchers.IO) { PatchUtils.imageHashes(context) }
     }
+    val paths = remember(snapshot.stockBackupSlots, snapshot.patchedBackupSlots) { PatchUtils.imagePaths(context) }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Image hashes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             hashes.toSortedMap().forEach { (name, hash) ->
-                Text("$name: $hash", style = MaterialTheme.typography.bodySmall)
+                Text(name, fontWeight = FontWeight.Bold)
+                Text(hash, style = MaterialTheme.typography.bodySmall)
+                Text(paths[name] ?: "Unavailable", style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -390,18 +394,28 @@ private fun RootPanel(session: ThorSession, context: Context) {
             else -> "Confirm operation?"
         }
         val message = when (operation) {
-            ThorOperation.BACKUP -> "This reads both available Thor boot slots and stores stock images in the recovery folder. Confirm on the lower display to continue."
-            ThorOperation.PATCH -> "This asks Magisk to patch the current active-slot stock image. Confirm on the lower display to continue."
-            ThorOperation.FLASH -> "This writes the patched image to the current active Thor slot. Reboot from the lower display after confirming that both stock backups are stored safely."
+            ThorOperation.BACKUP -> "This reads both available Thor boot slots and stores stock images in the recovery folder."
+            ThorOperation.PATCH -> "This asks Magisk to patch the current active-slot stock image."
+            ThorOperation.FLASH -> "This writes the patched image to the current active Thor slot. Reboot after confirming that both stock backups are stored safely."
             ThorOperation.RESTORE -> "This writes the stock image to the current active Thor slot. Reboot the Thor after the operation completes."
             ThorOperation.REBOOT -> "This reboots the Thor without changing its partitions."
             ThorOperation.CLEAR_CACHE -> "This removes Magisk-patched images from the recovery folder but keeps all stock backups available for restore."
             else -> "Confirm this operation."
         }
+        val confirmationDetails = buildString {
+            append("\n\nActive slot: ")
+            append(snapshot.activeSlot)
+            append("\nRecovery folder: ")
+            append(context.getExternalFilesDir(null)?.absolutePath ?: "Unavailable")
+            if (operation == ThorOperation.RESTORE && snapshot.stockRestoreAvailable) {
+                append("\nStock restore source is available locally or in Download.")
+            }
+            append("\nConfirm on the lower display to continue.")
+        }
         AlertDialog(
             onDismissRequest = { pendingOperation = null },
             title = { Text(title) },
-            text = { Text(message) },
+            text = { Text(message + confirmationDetails) },
             confirmButton = {
                 TextButton(onClick = { pendingOperation = null; session.run(scope, operation) }) { Text("Confirm") }
             },

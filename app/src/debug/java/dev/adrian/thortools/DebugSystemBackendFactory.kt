@@ -48,6 +48,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
         bootAvailable = true,
         backupDestinationWritable = true,
         backupAvailable = false,
+        stockRestoreAvailable = false,
         patchedBackupAvailable = false,
         stockBackupSlots = emptySet(),
         patchedBackupSlots = emptySet(),
@@ -63,6 +64,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                 writeImages("boot", "init_boot")
                 state = state.copy(
                     backupAvailable = true,
+                    stockRestoreAvailable = true,
                     stockBackupSlots = setOf("_a", "_b"),
                 )
             }

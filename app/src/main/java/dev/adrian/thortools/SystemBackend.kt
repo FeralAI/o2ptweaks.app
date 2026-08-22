@@ -65,6 +65,7 @@ data class ThorSnapshot(
     val bootAvailable: Boolean,
     val backupDestinationWritable: Boolean,
     val backupAvailable: Boolean,
+    val stockRestoreAvailable: Boolean = false,
     val patchedBackupAvailable: Boolean,
     val stockBackupSlots: Set<String> = emptySet(),
     val patchedBackupSlots: Set<String> = emptySet(),
@@ -99,6 +100,7 @@ data class ThorSnapshot(
             bootAvailable = false,
             backupDestinationWritable = false,
             backupAvailable = false,
+            stockRestoreAvailable = false,
             patchedBackupAvailable = false,
             operation = operation,
         )
@@ -137,13 +139,15 @@ object ThorOperationGuard {
         if (operation in imageOperations && snapshot.activeSlot !in setOf("_a", "_b")) {
             return "The active Thor slot could not be determined"
         }
+        if (operation in imageOperations && !snapshot.initBootAvailable && !snapshot.bootAvailable) {
+            return "No supported Thor boot partition was found"
+        }
         if (operation in imageOperations && !snapshot.backupDestinationWritable) {
             return "The Thor backup destination is not writable"
         }
         when (operation) {
             ThorOperation.BACKUP -> {
                 if (snapshot.rooted) return "Capture stock backups before root is active"
-                if (!snapshot.initBootAvailable && !snapshot.bootAvailable) return "No supported Thor boot partition was found"
             }
             ThorOperation.PATCH -> {
                 if (snapshot.rooted) return "The Thor is already rooted; restore stock before preparing another patch"
@@ -156,7 +160,7 @@ object ThorOperationGuard {
                 if (!snapshot.patchedBackupAvailable) return "Prepare a Magisk-patched active-slot image first"
             }
             ThorOperation.RESTORE -> {
-                if (!snapshot.backupAvailable) return "Create a stock active-slot backup before restoring"
+                if (!snapshot.stockRestoreAvailable) return "Create a stock active-slot backup before restoring"
             }
             ThorOperation.SET_VOLUME_STEPS, ThorOperation.SET_BOOT_ANIMATION -> {
                 if (!snapshot.magiskInstalled || !snapshot.rooted) return "Root the Thor with Magisk before changing module settings"
@@ -203,6 +207,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             bootAvailable = boot,
             backupDestinationWritable = backupDestination,
             backupAvailable = PatchUtils.checkActiveSlotBackupExists(context),
+            stockRestoreAvailable = PatchUtils.checkActiveSlotRestoreExists(context),
             patchedBackupAvailable = PatchUtils.checkBootMagiskExists(context),
             stockBackupSlots = PatchUtils.stockBackupSlots(context),
             patchedBackupSlots = PatchUtils.patchedBackupSlots(context),
@@ -238,7 +243,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             } else {
                 OperationResult(false, "No patched active-slot image is available")
             }
-            ThorOperation.RESTORE -> if (!current.backupAvailable) {
+            ThorOperation.RESTORE -> if (!current.stockRestoreAvailable) {
                 OperationResult(false, "A stock active-slot backup is required")
             } else if (PatchUtils.restoreBoot(context)) {
                 OperationResult(true, "Stock image restored; reboot required")

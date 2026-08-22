@@ -19,11 +19,9 @@ case "$ACTIVE_SLOT" in
 esac
 BOOT_DEVICE="$(resolve_partition "boot$ACTIVE_SLOT")"
 BOOT_IMG="$WORKING_PATH/boot$ACTIVE_SLOT.img"
-
-# if [ ! -e "$BOOT_IMG" ]; then
-#     echo "$BOOT_IMG not found"
-#     BOOT_IMG="$DOWNLOAD_PATH/boot$ACTIVE_SLOT.img"
-# fi
+if [ ! -s "$BOOT_IMG" ]; then
+    BOOT_IMG="$DOWNLOAD_PATH/boot$ACTIVE_SLOT.img"
+fi
 
 if [ -n "$BOOT_DEVICE" ] && [ -s "$BOOT_IMG" ]; then
     echo "Restoring $BOOT_IMG..." >> $LOG_FILE

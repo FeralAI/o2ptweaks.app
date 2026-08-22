@@ -153,6 +153,7 @@ jobs:
           release_apk="$(find app/build/outputs/apk/alpha -type f -name 'thortools-*.apk' -print -quit)"
           test -n "$release_apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$release_apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$release_apk" | grep -Fq 'CN=Android Debug'
           package_name="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$release_apk" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p")"
           test "$package_name" = "dev.adrian.thortools"
 

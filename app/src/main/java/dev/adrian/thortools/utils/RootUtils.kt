@@ -104,6 +104,9 @@ object RootUtils {
     fun checkFileExistsRoot(context: Context, path: String): Boolean =
         runRootCommand(context, "[ -e ${shellQuote(path)} ] && printf '%s' 1 || printf '%s' 0") == "1"
 
+    fun checkFileNonEmptyRoot(context: Context, path: String): Boolean =
+        runRootCommand(context, "[ -s ${shellQuote(path)} ] && printf '%s' 1 || printf '%s' 0") == "1"
+
     fun reboot(context: Context): Boolean =
         RootExec().executeAsRoot("reboot >/dev/null 2>&1 & printf '%s' 0").getOrNull() == "0"
 

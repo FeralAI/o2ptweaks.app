@@ -77,7 +77,36 @@ class ThorOperationGuardTest {
     fun keepsRestoreAvailableAfterRootFlash() {
         assertNull(
             ThorOperationGuard.validate(
-                snapshot(rooted = true, backupAvailable = true),
+                snapshot(rooted = true, backupAvailable = true, stockRestoreAvailable = true),
+                ThorOperation.RESTORE,
+            ),
+        )
+    }
+
+    @Test
+    fun allowsRestoreFromIndependentStockCopy() {
+        assertNull(
+            ThorOperationGuard.validate(
+                snapshot(rooted = true, stockRestoreAvailable = true),
+                ThorOperation.RESTORE,
+            ),
+        )
+    }
+
+    @Test
+    fun rejectsRestoreWithoutAnyStockCopy() {
+        assertEquals(
+            "Create a stock active-slot backup before restoring",
+            ThorOperationGuard.validate(snapshot(rooted = true), ThorOperation.RESTORE),
+        )
+    }
+
+    @Test
+    fun rejectsRestoreWithoutABootPartition() {
+        assertEquals(
+            "No supported Thor boot partition was found",
+            ThorOperationGuard.validate(
+                snapshot(rooted = true, stockRestoreAvailable = true, initBootAvailable = false, bootAvailable = false),
                 ThorOperation.RESTORE,
             ),
         )
@@ -101,6 +130,7 @@ class ThorOperationGuardTest {
         rooted: Boolean = false,
         magiskInstalled: Boolean = true,
         backupAvailable: Boolean = false,
+        stockRestoreAvailable: Boolean = backupAvailable,
         batteryAvailable: Boolean = true,
     ): ThorSnapshot {
         return ThorSnapshot(
@@ -120,6 +150,7 @@ class ThorOperationGuardTest {
             bootAvailable = bootAvailable,
             backupDestinationWritable = backupDestinationWritable,
             backupAvailable = backupAvailable,
+            stockRestoreAvailable = stockRestoreAvailable,
             patchedBackupAvailable = false,
             operation = OperationState(),
         )

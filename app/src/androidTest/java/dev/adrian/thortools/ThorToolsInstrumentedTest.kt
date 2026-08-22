@@ -32,6 +32,7 @@ class ThorToolsInstrumentedTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val backend = SystemBackendFactory.create(context)
         assertTrue(backend.perform(ThorOperation.BACKUP).success)
+        assertTrue(backend.snapshot().stockRestoreAvailable)
         assertTrue(backend.perform(ThorOperation.PATCH).success)
         assertTrue(backend.snapshot().patchedBackupAvailable)
         assertTrue(backend.perform(ThorOperation.CLEAR_CACHE).success)

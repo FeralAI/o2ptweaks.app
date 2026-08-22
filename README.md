@@ -16,6 +16,7 @@ The app enters diagnostics-only mode on other devices or when the Thor privilege
 - Rooted volume-step control
 - Optional boot-animation disable through a ThorTools Magisk module
 - SHA-256 hashes for cached stock and patched images
+- Stock restore fallback from the independent Download copy
 - Dual-screen AYN Thor AVD and patched emulator compositor
 
 Thor-specific audio changes are intentionally deferred until they have been measured and validated on physical Thor hardware.
