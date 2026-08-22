@@ -5,6 +5,8 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import android.hardware.display.DisplayManager
 import androidx.lifecycle.Lifecycle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
@@ -107,6 +109,8 @@ class ThorToolsInstrumentedTest {
             assertEquals(OperationStatus.INTERRUPTED, session.snapshot.operation.status)
             session.load()
             assertEquals(OperationStatus.INTERRUPTED, session.snapshot.operation.status)
+            assertEquals(0, performCount)
+            session.run(CoroutineScope(Dispatchers.Unconfined), ThorOperation.FLASH)
             assertEquals(0, performCount)
             assertTrue(session.acknowledgeInterruptedOperation())
             assertEquals(OperationStatus.IDLE, session.snapshot.operation.status)

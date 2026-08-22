@@ -49,6 +49,7 @@ import dev.adrian.thortools.ThorVariant
 import dev.adrian.thortools.utils.PatchUtils
 import dev.adrian.thortools.utils.getLogFile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 enum class ThorSection {
@@ -93,7 +94,7 @@ fun ThorControlScreen(
             }
             if (section == ThorSection.STATUS) {
                 TextButton(
-                    onClick = { session.run(scope, ThorOperation.REFRESH) },
+                    onClick = { scope.launch { session.refresh() } },
                     modifier = Modifier.align(Alignment.End).padding(horizontal = 12.dp),
                 ) {
                     Text("Refresh")
@@ -286,7 +287,7 @@ private fun TweaksPanel(session: ThorSession, context: Context) {
     var volumeSteps by remember(snapshot.volumeSteps) { mutableStateOf(snapshot.volumeSteps.toFloat().coerceIn(AppSettings.VOLUME_STEPS_MIN.toFloat(), AppSettings.VOLUME_STEPS_MAX.toFloat())) }
     var skipBootAnimation by remember { mutableStateOf(AppSettings.getSkipBootAnimation(prefs)) }
     val enabled = snapshot.profile.isThor && snapshot.rootServiceAvailable
-    val actionReady = snapshot.operation.status != OperationStatus.RUNNING
+    val actionReady = snapshot.operation.status !in setOf(OperationStatus.RUNNING, OperationStatus.INTERRUPTED)
     val moduleReady = actionReady && ThorOperationGuard.validate(snapshot, ThorOperation.SET_VOLUME_STEPS) == null
 
     Column(
@@ -367,7 +368,7 @@ private fun RootPanel(session: ThorSession, context: Context) {
     val snapshot = session.snapshot
     var pendingOperation by remember { mutableStateOf<ThorOperation?>(null) }
     val thorReady = snapshot.profile.isThor
-    val actionReady = snapshot.operation.status != OperationStatus.RUNNING
+    val actionReady = snapshot.operation.status !in setOf(OperationStatus.RUNNING, OperationStatus.INTERRUPTED)
     val rootReady = snapshot.profile.isThor && snapshot.rootServiceAvailable && snapshot.activeSlot in setOf("_a", "_b")
     fun operationReady(operation: ThorOperation): Boolean =
         actionReady && ThorOperationGuard.validate(snapshot, operation) == null

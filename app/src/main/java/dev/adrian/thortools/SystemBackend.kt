@@ -325,7 +325,12 @@ class ThorSession(
     }
 
     suspend fun refresh() {
-        val refreshedOperation = snapshot.operation.copy(status = OperationStatus.IDLE, message = "Ready")
+        if (snapshot.operation.status == OperationStatus.RUNNING) return
+        val refreshedOperation = if (hasRecoveryJournal()) {
+            snapshot.operation
+        } else {
+            snapshot.operation.copy(status = OperationStatus.IDLE, message = "Ready")
+        }
         snapshot = runCatching {
             withContext(Dispatchers.IO) { backend.snapshot(refreshedOperation) }
         }.getOrElse {
@@ -356,7 +361,7 @@ class ThorSession(
     }
 
     fun run(scope: CoroutineScope, operation: ThorOperation, argument: String? = null) {
-        if (snapshot.operation.status == OperationStatus.RUNNING) return
+        if (snapshot.operation.status == OperationStatus.RUNNING || hasRecoveryJournal()) return
         val running = OperationState(operation, OperationStatus.RUNNING, "${operation.name.lowercase().replace('_', ' ')} in progress")
         if (!persistJournal(running)) {
             snapshot = snapshot.copy(
@@ -400,4 +405,7 @@ class ThorSession(
             .remove(AppSettings.JOURNAL_MESSAGE_KEY)
             .commit()
     }
+
+    private fun hasRecoveryJournal(): Boolean =
+        AppSettings.getSharedPrefs(context).contains(AppSettings.JOURNAL_OPERATION_KEY)
 }
