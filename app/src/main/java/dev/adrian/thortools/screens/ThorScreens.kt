@@ -324,7 +324,7 @@ private fun RootPanel(session: ThorSession, context: Context) {
     val rootReady = snapshot.profile.isThor && snapshot.rootServiceAvailable && snapshot.activeSlot != "unknown"
     val imageReady = rootReady && snapshot.batteryPercent >= 35 && snapshot.backupDestinationWritable && (snapshot.initBootAvailable || snapshot.bootAvailable)
     val flashReady = imageReady && snapshot.rooted.not() && snapshot.magiskInstalled && snapshot.patchedBackupAvailable
-    val restoreReady = imageReady && snapshot.rooted && snapshot.backupAvailable
+    val restoreReady = imageReady && snapshot.backupAvailable
 
     Column(
         modifier = Modifier.fillMaxWidth().fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp),
