@@ -3,6 +3,7 @@ package dev.adrian.thortools
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
+import android.content.pm.ActivityInfo
 import android.hardware.display.DisplayManager
 import androidx.lifecycle.Lifecycle
 import kotlinx.coroutines.CoroutineScope
@@ -82,6 +83,7 @@ class ThorToolsInstrumentedTest {
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         scenario.onActivity { activity ->
             assertEquals(Lifecycle.State.RESUMED, activity.lifecycle.currentState)
+            assertEquals(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, activity.requestedOrientation)
         }
         scenario.close()
     }

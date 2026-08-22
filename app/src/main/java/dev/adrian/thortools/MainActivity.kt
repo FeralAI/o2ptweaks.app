@@ -2,6 +2,7 @@ package dev.adrian.thortools
 
 import android.app.Presentation
 import android.content.Context
+import android.content.res.Configuration
 import android.hardware.display.DisplayManager
 import android.os.Bundle
 import android.view.Display
@@ -70,6 +71,16 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         activityResumed = true
         displayManager?.registerDisplayListener(displayListener, null)
+        requestSecondaryDisplay()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        requestSecondaryDisplay()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
         requestSecondaryDisplay()
     }
 
@@ -154,6 +165,8 @@ private class ThorPresentation(
             setTag(androidx.lifecycle.runtime.R.id.view_tree_lifecycle_owner, activity)
             setTag(androidx.savedstate.R.id.view_tree_saved_state_registry_owner, activity)
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+            isFocusable = true
+            isFocusableInTouchMode = true
             setContent {
                 ThorToolsTheme {
                     ThorControlScreen(session, context, isLowerDisplay = true)
@@ -161,8 +174,8 @@ private class ThorPresentation(
             }
         }
         setContentView(composeView)
-        composeView.isFocusableInTouchMode = true
-        composeView.requestFocus()
+        window?.takeKeyEvents(true)
+        composeView.requestFocusFromTouch()
     }
 }
 

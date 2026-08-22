@@ -33,7 +33,10 @@
 
         <activity
             android:name=".PermissionActivity"
-            android:exported="true">
+            android:configChanges="density|orientation|screenLayout|screenSize|smallestScreenSize"
+            android:exported="true"
+            android:resizeableActivity="true"
+            android:screenOrientation="landscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -42,7 +45,10 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="false">
+            android:configChanges="density|orientation|screenLayout|screenSize|smallestScreenSize"
+            android:exported="false"
+            android:resizeableActivity="true"
+            android:screenOrientation="landscape">
         </activity>
 
         <receiver
