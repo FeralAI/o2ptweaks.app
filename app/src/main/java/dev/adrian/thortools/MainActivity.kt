@@ -1,6 +1,5 @@
 package dev.adrian.thortools
 
-import android.app.Activity
 import android.app.Presentation
 import android.content.Context
 import android.hardware.display.DisplayManager
@@ -9,6 +8,7 @@ import android.view.Display
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.runtime.getValue
@@ -20,6 +20,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import dev.adrian.thortools.screens.ThorControlScreen
 import dev.adrian.thortools.screens.ThorDashboardScreen
 import dev.adrian.thortools.ui.theme.ThorToolsTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var session: ThorSession
@@ -46,9 +47,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         session = ThorSession(this)
         displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-        val insetsController = WindowCompat.getInsetsController(window, window.decorView)
-        insetsController.hide(WindowInsetsCompat.Type.navigationBars())
-        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        configureThorWindow(window)
+        lifecycleScope.launch {
+            session.load()
+        }
         setContent {
             ThorToolsTheme {
                 if (hasThorLowerDisplay) {
@@ -111,15 +113,18 @@ class MainActivity : ComponentActivity() {
 }
 
 private class ThorPresentation(
-    activity: Activity,
+    private val activity: ComponentActivity,
     display: Display,
     private val session: ThorSession,
 ) : Presentation(activity, display) {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        configureThorWindow(window)
         window?.clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
         val composeView = ComposeView(context).apply {
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setTag(androidx.lifecycle.runtime.R.id.view_tree_lifecycle_owner, activity)
+            setTag(androidx.savedstate.R.id.view_tree_saved_state_registry_owner, activity)
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent {
                 ThorToolsTheme {
                     ThorControlScreen(session, context)
@@ -130,4 +135,12 @@ private class ThorPresentation(
         composeView.isFocusableInTouchMode = true
         composeView.requestFocus()
     }
+}
+
+private fun configureThorWindow(window: android.view.Window?) {
+    window ?: return
+    WindowCompat.setDecorFitsSystemWindows(window, false)
+    val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+    insetsController.hide(WindowInsetsCompat.Type.systemBars())
+    insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 }

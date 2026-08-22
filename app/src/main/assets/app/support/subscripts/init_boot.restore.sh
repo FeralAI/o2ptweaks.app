@@ -7,6 +7,10 @@ LOG_FILE="$WORKING_PATH/init_boot.restore.log"
 echo "Restore init_boot.img starting..." > $LOG_FILE
 
 ACTIVE_SLOT=$(getprop ro.boot.slot_suffix)
+case "$ACTIVE_SLOT" in
+    _a|_b) ;;
+    *) exit 1 ;;
+esac
 # BOOT_DEVICE=$(ls -la /dev/block/bootdevice/by-name | grep " init_boot$ACTIVE_SLOT " | sed -En 's/^.*(\/dev\/block\/.*)$/\1/p')
 BOOT_DEVICE="/dev/block/by-name/init_boot$ACTIVE_SLOT"
 BOOT_IMG="$WORKING_PATH/init_boot$ACTIVE_SLOT.img"
@@ -18,7 +22,7 @@ BOOT_IMG="$WORKING_PATH/init_boot$ACTIVE_SLOT.img"
 
 if [ -s "$BOOT_IMG" ]; then
     echo "Restoring $BOOT_IMG..." >> $LOG_FILE
-    if dd if="$BOOT_IMG" of="$BOOT_DEVICE" >> "$LOG_FILE" 2>&1; then
+    if dd if="$BOOT_IMG" of="$BOOT_DEVICE" >> "$LOG_FILE" 2>&1 && sync; then
         echo "Restore init_boot.img complete!" >> "$LOG_FILE"
         exit 0
     fi

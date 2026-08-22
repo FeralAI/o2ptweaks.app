@@ -82,6 +82,27 @@ data class ThorSnapshot(
             "Battery state" to profile.supports(ThorCapability.BATTERY_STATE),
             "Backup destination" to profile.supports(ThorCapability.BACKUP_DESTINATION),
         )
+
+    companion object {
+        fun loading(operation: OperationState): ThorSnapshot = ThorSnapshot(
+            profile = DeviceProfile.detect(DeviceProperties()),
+            batteryPercent = 0,
+            lcdDensity = 0,
+            volumeSteps = AppSettings.VOLUME_STEPS_DEFAULT,
+            animationSpeed = AppSettings.ANIMATION_SPEED_DEFAULT,
+            activeSlot = "unknown",
+            kernelVersion = "",
+            rootServiceAvailable = false,
+            rooted = false,
+            magiskInstalled = false,
+            initBootAvailable = false,
+            bootAvailable = false,
+            backupDestinationWritable = false,
+            backupAvailable = false,
+            patchedBackupAvailable = false,
+            operation = operation,
+        )
+    }
 }
 
 data class OperationResult(
@@ -161,7 +182,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
                 OperationResult(queued, if (queued) "Magisk download started in the Download folder" else "Could not start the Magisk download")
             }
             ThorOperation.BACKUP -> if (PatchUtils.backupBoot(context)) {
-                OperationResult(true, "Both available boot partitions were backed up")
+                OperationResult(true, "Available Thor boot partitions were backed up")
             } else {
                 OperationResult(false, "No readable Thor boot partitions were backed up")
             }
@@ -233,7 +254,9 @@ class ThorSession(
     private val context: Context,
     private val backend: SystemBackend = SystemBackendFactory.create(context),
 ) {
-    var snapshot by mutableStateOf(backend.snapshot(operationFromJournal()))
+    private val initialOperation = operationFromJournal()
+
+    var snapshot by mutableStateOf(ThorSnapshot.loading(initialOperation))
         private set
 
     private fun operationFromJournal(): OperationState {
@@ -247,15 +270,28 @@ class ThorSession(
         )
     }
 
-    fun refresh() {
-        snapshot = backend.snapshot(snapshot.operation.copy(status = OperationStatus.IDLE, message = "Ready"))
+    suspend fun load() {
+        snapshot = runCatching {
+            withContext(Dispatchers.IO) { backend.snapshot(initialOperation) }
+        }.getOrElse {
+            ThorSnapshot.loading(initialOperation.copy(status = OperationStatus.FAILURE, message = "Could not read Thor system state"))
+        }
+    }
+
+    suspend fun refresh() {
+        val refreshedOperation = snapshot.operation.copy(status = OperationStatus.IDLE, message = "Ready")
+        snapshot = runCatching {
+            withContext(Dispatchers.IO) { backend.snapshot(refreshedOperation) }
+        }.getOrElse {
+            snapshot.copy(operation = refreshedOperation)
+        }
     }
 
     fun run(scope: CoroutineScope, operation: ThorOperation, argument: String? = null) {
         if (snapshot.operation.status == OperationStatus.RUNNING) return
         val running = OperationState(operation, OperationStatus.RUNNING, "${operation.name.lowercase().replace('_', ' ')} in progress")
         persistJournal(running)
-        snapshot = backend.snapshot(running)
+        snapshot = snapshot.copy(operation = running)
         scope.launch {
             val result = try {
                 withContext(Dispatchers.IO) { backend.perform(operation, argument) }
@@ -270,7 +306,11 @@ class ThorSession(
                 result.message,
             )
             clearJournal()
-            snapshot = backend.snapshot(finished)
+            snapshot = runCatching {
+                withContext(Dispatchers.IO) { backend.snapshot(finished) }
+            }.getOrElse {
+                snapshot.copy(operation = finished)
+            }
         }
     }
 

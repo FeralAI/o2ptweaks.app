@@ -43,6 +43,8 @@ jobs:
           echo "$RUNNER_TEMP/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
       - name: Set up Gradle caching
         uses: gradle/actions/setup-gradle@v6
+      - name: Validate shell scripts
+        run: bash -n scripts/*.sh app/src/main/assets/app/support/subscripts/*.sh
       - name: Run unit tests, lint, and build
         run: gradle --no-daemon --stacktrace --console=plain :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleAlpha
       - name: Upload JUnit results

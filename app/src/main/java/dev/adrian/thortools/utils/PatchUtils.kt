@@ -46,7 +46,7 @@ object PatchUtils {
             )
         }
         return paths.mapNotNull { (name, path) ->
-            if (nonEmpty(path)) name to sha256(path) else null
+            runCatching { if (nonEmpty(path)) name to sha256(path) else null }.getOrNull()
         }.toMap()
     }
 
@@ -133,6 +133,6 @@ object PatchUtils {
                 read = input.read(buffer)
             }
         }
-        return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+        return digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
     }
 }

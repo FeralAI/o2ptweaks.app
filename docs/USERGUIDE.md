@@ -10,7 +10,7 @@ The Status section reports the detected Thor variant, raw model information, fir
 
 Display density and animation speed are applied through Android system settings. On a rooted Thor, volume steps and boot-animation behavior are persisted through the ThorTools Magisk module and require a reboot when the dashboard says so.
 
-The controls are disabled when Thor identity, the privileged root service, or root access is missing.
+Display and animation controls require the Thor privileged root service. Volume-step and boot-animation controls additionally require Magisk and root access.
 
 ## EZ Root
 

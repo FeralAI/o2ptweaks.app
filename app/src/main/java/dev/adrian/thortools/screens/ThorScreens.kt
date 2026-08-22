@@ -171,6 +171,9 @@ private fun DashboardIdentity(snapshot: ThorSnapshot) {
             DataLine("Build date", snapshot.profile.properties.buildDate)
             DataLine("Serial", snapshot.profile.properties.serial)
             DataLine("Active slot", snapshot.activeSlot)
+            DataLine("Root service", if (snapshot.rootServiceAvailable) "Available" else "Unavailable")
+            DataLine("Root state", if (snapshot.rooted) "Rooted" else "Not rooted")
+            DataLine("Magisk", if (snapshot.magiskInstalled) "Installed" else "Not installed")
             DataLine("Stock backups", "${snapshot.stockBackupSlots.size}/2 slots")
             DataLine("Patched backups", "${snapshot.patchedBackupSlots.size}/2 slots")
             DataLine("Battery", if (snapshot.batteryPercent > 0) "${snapshot.batteryPercent}%" else "Unavailable")
@@ -231,6 +234,7 @@ private fun TweaksPanel(session: ThorSession, context: Context) {
     var volumeSteps by remember(snapshot.volumeSteps) { mutableStateOf(snapshot.volumeSteps.toFloat().coerceIn(AppSettings.VOLUME_STEPS_MIN.toFloat(), AppSettings.VOLUME_STEPS_MAX.toFloat())) }
     var skipBootAnimation by remember { mutableStateOf(AppSettings.getSkipBootAnimation(prefs)) }
     val enabled = snapshot.profile.isThor && snapshot.rootServiceAvailable
+    val actionReady = snapshot.operation.status != OperationStatus.RUNNING
     val moduleReady = enabled && snapshot.rooted && snapshot.magiskInstalled
 
     Column(
@@ -247,7 +251,7 @@ private fun TweaksPanel(session: ThorSession, context: Context) {
                     onValueChange = { dpi = it },
                     valueRange = AppSettings.DPI_MIN.toFloat()..AppSettings.DPI_MAX.toFloat(),
                     steps = AppSettings.DPI_MAX - AppSettings.DPI_MIN - 1,
-                    enabled = enabled,
+                    enabled = enabled && actionReady,
                     onValueChangeFinished = { session.run(scope, ThorOperation.SET_DPI, dpi.toInt().toString()) },
                 )
                 Text("Default: ${AppSettings.getPropLcdDensity(prefs)}")
@@ -258,7 +262,7 @@ private fun TweaksPanel(session: ThorSession, context: Context) {
                 Text("Animation speed: ${snapshot.animationSpeed}x")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(1f, 0.5f, 0f).forEach { value ->
-                        OutlinedButton(enabled = enabled, onClick = { session.run(scope, ThorOperation.SET_ANIMATION, value.toString()) }) {
+                        OutlinedButton(enabled = enabled && actionReady, onClick = { session.run(scope, ThorOperation.SET_ANIMATION, value.toString()) }) {
                             Text(if (value == 0f) "Off" else "${value}x")
                         }
                     }
@@ -274,7 +278,7 @@ private fun TweaksPanel(session: ThorSession, context: Context) {
                         onValueChange = { volumeSteps = it },
                         valueRange = AppSettings.VOLUME_STEPS_MIN.toFloat()..AppSettings.VOLUME_STEPS_MAX.toFloat(),
                         steps = AppSettings.VOLUME_STEPS_MAX - AppSettings.VOLUME_STEPS_MIN - 1,
-                        enabled = enabled,
+                        enabled = enabled && actionReady,
                         onValueChangeFinished = { session.run(scope, ThorOperation.SET_VOLUME_STEPS, volumeSteps.toInt().toString()) },
                     )
                 }
@@ -291,7 +295,7 @@ private fun TweaksPanel(session: ThorSession, context: Context) {
                     }
                     Switch(
                         checked = skipBootAnimation,
-                        enabled = enabled,
+                        enabled = enabled && actionReady,
                         onCheckedChange = {
                             skipBootAnimation = it
                             session.run(scope, ThorOperation.SET_BOOT_ANIMATION, it.toString())
@@ -310,6 +314,8 @@ private fun RootPanel(session: ThorSession, context: Context) {
     val scope = rememberCoroutineScope()
     val snapshot = session.snapshot
     var pendingOperation by remember { mutableStateOf<ThorOperation?>(null) }
+    val thorReady = snapshot.profile.isThor
+    val actionReady = snapshot.operation.status != OperationStatus.RUNNING
     val rootReady = snapshot.profile.isThor && snapshot.rootServiceAvailable && snapshot.activeSlot != "unknown"
     val imageReady = rootReady && snapshot.batteryPercent >= 35 && snapshot.backupDestinationWritable && (snapshot.initBootAvailable || snapshot.bootAvailable)
     val flashReady = imageReady && snapshot.rooted.not() && snapshot.magiskInstalled && snapshot.patchedBackupAvailable
@@ -321,14 +327,15 @@ private fun RootPanel(session: ThorSession, context: Context) {
     ) {
         Text("EZ Root for AYN Thor", style = MaterialTheme.typography.headlineSmall)
         Text("ThorTools checks the active slot and partition layout again before each image operation. Backups are copied to the app folder and Download folder.")
-        Button(enabled = rootReady && !snapshot.magiskInstalled, onClick = { session.run(scope, ThorOperation.INSTALL_MAGISK) }, modifier = Modifier.fillMaxWidth()) { Text(if (snapshot.magiskInstalled) "Magisk installed" else "Download Magisk") }
-        Button(enabled = imageReady && !snapshot.rooted && snapshot.magiskInstalled && snapshot.stockBackupSlots.size < 2, onClick = { pendingOperation = ThorOperation.BACKUP }, modifier = Modifier.fillMaxWidth()) { Text("Back up both slots (${snapshot.stockBackupSlots.size}/2 ready)") }
-        Button(enabled = imageReady && !snapshot.rooted && snapshot.magiskInstalled && snapshot.backupAvailable && !snapshot.patchedBackupAvailable, onClick = { pendingOperation = ThorOperation.PATCH }, modifier = Modifier.fillMaxWidth()) { Text("Prepare root patch") }
-        Button(enabled = flashReady, onClick = { pendingOperation = ThorOperation.FLASH }, modifier = Modifier.fillMaxWidth()) { Text("Flash active-slot patch") }
-        Button(enabled = restoreReady, onClick = { pendingOperation = ThorOperation.RESTORE }, modifier = Modifier.fillMaxWidth()) { Text("Restore stock image") }
-        OutlinedButton(enabled = rootReady, onClick = { pendingOperation = ThorOperation.REBOOT }, modifier = Modifier.fillMaxWidth()) { Text("Reboot Thor") }
-        OutlinedButton(enabled = snapshot.profile.isThor && (snapshot.backupAvailable || snapshot.patchedBackupAvailable), onClick = { session.run(scope, ThorOperation.CLEAR_CACHE) }, modifier = Modifier.fillMaxWidth()) { Text("Clear cached images") }
-        if (!rootReady) Text("This device is in diagnostics-only mode until Thor identity, the privileged service, and the active slot are available.", color = MaterialTheme.colorScheme.error)
+        Button(enabled = actionReady && thorReady && !snapshot.magiskInstalled, onClick = { session.run(scope, ThorOperation.INSTALL_MAGISK) }, modifier = Modifier.fillMaxWidth()) { Text(if (snapshot.magiskInstalled) "Magisk installed" else "Download Magisk") }
+        Button(enabled = actionReady && imageReady && !snapshot.rooted && snapshot.magiskInstalled && snapshot.stockBackupSlots.size < 2, onClick = { pendingOperation = ThorOperation.BACKUP }, modifier = Modifier.fillMaxWidth()) { Text("Back up available slots (${snapshot.stockBackupSlots.size}/2 ready)") }
+        Button(enabled = actionReady && imageReady && !snapshot.rooted && snapshot.magiskInstalled && snapshot.backupAvailable && !snapshot.patchedBackupAvailable, onClick = { pendingOperation = ThorOperation.PATCH }, modifier = Modifier.fillMaxWidth()) { Text("Prepare root patch") }
+        Button(enabled = actionReady && flashReady, onClick = { pendingOperation = ThorOperation.FLASH }, modifier = Modifier.fillMaxWidth()) { Text("Flash active-slot patch") }
+        Button(enabled = actionReady && restoreReady, onClick = { pendingOperation = ThorOperation.RESTORE }, modifier = Modifier.fillMaxWidth()) { Text("Restore stock image") }
+        OutlinedButton(enabled = actionReady && rootReady, onClick = { pendingOperation = ThorOperation.REBOOT }, modifier = Modifier.fillMaxWidth()) { Text("Reboot Thor") }
+        OutlinedButton(enabled = actionReady && snapshot.profile.isThor && (snapshot.backupAvailable || snapshot.patchedBackupAvailable), onClick = { session.run(scope, ThorOperation.CLEAR_CACHE) }, modifier = Modifier.fillMaxWidth()) { Text("Clear cached images") }
+        if (!thorReady) Text("This device is in diagnostics-only mode because it is not an AYN Thor.", color = MaterialTheme.colorScheme.error)
+        if (thorReady && !rootReady) Text("This Thor is in diagnostics-only mode until the privileged service and active slot are available.", color = MaterialTheme.colorScheme.error)
         if (rootReady && !imageReady) Text("Image operations require a supported partition, at least 35% battery, and writable backup storage.", color = MaterialTheme.colorScheme.error)
     }
 
