@@ -15,11 +15,17 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 if (!DeviceProfile.detect(SystemUtils.getDeviceProperties()).isThor || !RootUtils.hasPServer()) return@thread
                 val prefs = AppSettings.getSharedPrefs(context)
-                val dpi = AppSettings.getDpi(prefs)
-                if (dpi in AppSettings.DPI_MIN..AppSettings.DPI_MAX) RootUtils.setDpi(context, dpi)
-                val animationSpeed = AppSettings.getAnimationSpeed(prefs)
-                if (animationSpeed.isFinite() && animationSpeed in 0f..1f) RootUtils.setAnimationSpeed(context, animationSpeed)
-                AppSettings.save(context)
+                if (AppSettings.hasDpiOverride(prefs)) {
+                    val dpi = AppSettings.getDpi(prefs)
+                    if (dpi in AppSettings.DPI_MIN..AppSettings.DPI_MAX) RootUtils.setDpi(context, dpi)
+                }
+                if (AppSettings.hasAnimationSpeedOverride(prefs)) {
+                    val animationSpeed = AppSettings.getAnimationSpeed(prefs)
+                    if (animationSpeed.isFinite() && animationSpeed in 0f..1f) RootUtils.setAnimationSpeed(context, animationSpeed)
+                }
+                if (AppSettings.hasModuleSettings(prefs) || RootUtils.isThorToolsMagiskModuleInstalled(context)) {
+                    AppSettings.save(context)
+                }
             } finally {
                 pendingResult.finish()
             }

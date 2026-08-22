@@ -29,16 +29,39 @@ object AppSettings {
     fun save(context: Context): Boolean {
         val sharedPrefs = getSharedPrefs(context)
         val properties = buildString {
-            val dpi = getDpi(sharedPrefs)
-            val volumeSteps = getVolumeSteps(sharedPrefs)
-            if (dpi > 0) appendLine("ro.sf.lcd_density=$dpi")
-            if (volumeSteps > 0) appendLine("ro.config.media_vol_steps=$volumeSteps")
+            if (hasDpiOverride(sharedPrefs)) {
+                val dpi = getDpi(sharedPrefs)
+                if (dpi in DPI_MIN..DPI_MAX) appendLine("ro.sf.lcd_density=$dpi")
+            }
+            if (hasVolumeStepsOverride(sharedPrefs)) {
+                val volumeSteps = getVolumeSteps(sharedPrefs)
+                if (volumeSteps in VOLUME_STEPS_MIN..VOLUME_STEPS_MAX) appendLine("ro.config.media_vol_steps=$volumeSteps")
+            }
             if (getSkipBootAnimation(sharedPrefs)) appendLine("debug.sf.nobootanimation=1")
         }
         val propFile = FileUtils.getPathSupportFiles(context, "/magisk/thortools/system.prop")
         if (!FileUtils.saveFile(propFile, properties)) return false
+        val modulePropFile = FileUtils.getPathSupportFiles(context, "/magisk/thortools/module.prop")
+        val moduleProperties = buildString {
+            appendLine("id=thortools")
+            appendLine("name=ThorTools System Tweaks")
+            appendLine("version=${BuildConfig.VERSION_NAME}")
+            appendLine("versionCode=${BuildConfig.VERSION_CODE}")
+            appendLine("author=castdrian")
+            appendLine("description=System properties managed by ThorTools for the AYN Thor")
+        }
+        if (!FileUtils.saveFile(modulePropFile, moduleProperties)) return false
         return RootUtils.installThorToolsMagiskModule(context)
     }
+
+    fun hasDpiOverride(sharedPrefs: SharedPreferences): Boolean = sharedPrefs.contains(DPI_KEY)
+
+    fun hasAnimationSpeedOverride(sharedPrefs: SharedPreferences): Boolean = sharedPrefs.contains(ANIMATIONS_SPEED_KEY)
+
+    fun hasVolumeStepsOverride(sharedPrefs: SharedPreferences): Boolean = sharedPrefs.contains(VOLUME_STEPS_KEY)
+
+    fun hasModuleSettings(sharedPrefs: SharedPreferences): Boolean =
+        hasVolumeStepsOverride(sharedPrefs) || sharedPrefs.contains(SKIP_BOOT_ANIMATION_KEY)
 
     fun getPropLcdDensity(sharedPrefs: SharedPreferences, defaultValue: Int = 0): Int =
         sharedPrefs.getInt(PROP_LCD_DENSITY_KEY, defaultValue)

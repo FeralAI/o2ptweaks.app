@@ -21,6 +21,26 @@ class ThorToolsInstrumentedTest {
     }
 
     @Test
+    fun keepsBootOverridesDisabledUntilTheUserConfiguresThem() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = context.getSharedPreferences("ThorToolsModulePolicyTest", android.content.Context.MODE_PRIVATE)
+        try {
+            preferences.edit().clear().commit()
+            assertFalse(AppSettings.hasDpiOverride(preferences))
+            assertFalse(AppSettings.hasAnimationSpeedOverride(preferences))
+            assertFalse(AppSettings.hasModuleSettings(preferences))
+            preferences.edit().putInt(AppSettings.DPI_KEY, 320).commit()
+            preferences.edit().putFloat(AppSettings.ANIMATIONS_SPEED_KEY, 0.5f).commit()
+            preferences.edit().putInt(AppSettings.VOLUME_STEPS_KEY, 20).commit()
+            assertTrue(AppSettings.hasDpiOverride(preferences))
+            assertTrue(AppSettings.hasAnimationSpeedOverride(preferences))
+            assertTrue(AppSettings.hasModuleSettings(preferences))
+        } finally {
+            preferences.edit().clear().commit()
+        }
+    }
+
+    @Test
     fun debugBackendPresentsThorCapabilities() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val snapshot = SystemBackendFactory.create(context).snapshot()

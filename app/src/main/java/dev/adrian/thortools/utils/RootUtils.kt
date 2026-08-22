@@ -138,6 +138,9 @@ object RootUtils {
             runRootAction(context, "cp -fR \"$sourcePath/.\" \"$modulePath/\"")
     }
 
+    fun isThorToolsMagiskModuleInstalled(context: Context): Boolean =
+        checkFileExistsRoot(context, "$MODULE_DIR/thortools/module.prop")
+
     fun startActivityRoot(context: Context, activity: String): Boolean = runRootAction(context, "am start -n $activity")
 
     fun setAnimationSpeed(context: Context, animationSpeed: Float): Boolean =
