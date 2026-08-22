@@ -9,12 +9,18 @@ object PatchUtils {
 
     fun backupBoot(context: Context): Boolean {
         if (!RootUtils.hasPServer() || !FileUtils.isBackupDestinationWritable(context)) return false
+        val requiredSlots = slots.filter { slot ->
+            RootUtils.hasPartition(context, "init_boot", slot) ||
+                RootUtils.hasPartition(context, "boot", slot)
+        }.toSet()
         val initBootBackedUp = RootUtils.runRootScript(context, "init_boot.backup.sh") == "0"
         val bootBackedUp = RootUtils.runRootScript(context, "boot.backup.sh") == "0"
-        return (initBootBackedUp || bootBackedUp) && checkBootBackupExists(context)
+        return (initBootBackedUp || bootBackedUp) &&
+            hasCompleteSlotCoverage(requiredSlots, stockBackupSlots(context))
     }
 
-    fun checkBootBackupExists(context: Context): Boolean = stockBackupSlots(context).isNotEmpty()
+    internal fun hasCompleteSlotCoverage(requiredSlots: Set<String>, backedUpSlots: Set<String>): Boolean =
+        requiredSlots.isNotEmpty() && requiredSlots.all(backedUpSlots::contains)
 
     fun stockBackupSlots(context: Context): Set<String> = slots.filter { slot ->
         nonEmpty(FileUtils.getPathBackup(context, "/init_boot$slot.img")) ||

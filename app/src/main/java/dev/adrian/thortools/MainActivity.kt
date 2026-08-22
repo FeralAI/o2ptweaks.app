@@ -156,7 +156,7 @@ private class ThorPresentation(
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent {
                 ThorToolsTheme {
-                    ThorControlScreen(session, context)
+                    ThorControlScreen(session, context, isLowerDisplay = true)
                 }
             }
         }

@@ -63,6 +63,7 @@ enum class ThorSection {
 fun ThorControlScreen(
     session: ThorSession,
     context: Context,
+    isLowerDisplay: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -73,7 +74,7 @@ fun ThorControlScreen(
             when (section) {
                 ThorSection.STATUS -> StatusPanel(session.snapshot, context)
                 ThorSection.TWEAKS -> TweaksPanel(session, context)
-                ThorSection.ROOT -> RootPanel(session, context)
+                ThorSection.ROOT -> RootPanel(session, context, isLowerDisplay)
                 ThorSection.ABOUT -> AboutPanel(context)
             }
             if (session.snapshot.operation.status == OperationStatus.RUNNING) {
@@ -363,7 +364,7 @@ private fun TweaksPanel(session: ThorSession, context: Context) {
 }
 
 @Composable
-private fun RootPanel(session: ThorSession, context: Context) {
+private fun RootPanel(session: ThorSession, context: Context, isLowerDisplay: Boolean) {
     val scope = rememberCoroutineScope()
     val snapshot = session.snapshot
     var pendingOperation by remember { mutableStateOf<ThorOperation?>(null) }
@@ -419,7 +420,13 @@ private fun RootPanel(session: ThorSession, context: Context) {
             if (operation == ThorOperation.RESTORE && snapshot.stockRestoreAvailable) {
                 append("\nStock restore source is available locally or in Download.")
             }
-            append("\nConfirm on the lower display to continue.")
+            append(
+                if (isLowerDisplay) {
+                    "\nConfirm on the lower display to continue."
+                } else {
+                    "\nConfirm this operation to continue."
+                },
+            )
         }
         AlertDialog(
             onDismissRequest = { pendingOperation = null },
