@@ -61,7 +61,9 @@ object RootUtils {
         var process: Process? = null
         return try {
             process = Runtime.getRuntime().exec(arrayOf("/system/xbin/which", "su"))
-            BufferedReader(InputStreamReader(process.inputStream)).readLine() != null
+            val result = BufferedReader(InputStreamReader(process.inputStream)).use { it.readLine() != null }
+            process.waitFor()
+            result
         } catch (_: Throwable) {
             false
         } finally {
@@ -76,20 +78,27 @@ object RootUtils {
         return result.getOrNull().also { Log.d(TAG, "root command completed: ${result.isSuccess}") }
     }
 
-    fun runRootAction(context: Context, command: String): Boolean = RootExec().executeAsRoot(command).isSuccess
+    fun runRootAction(context: Context, command: String): Boolean =
+        RootExec().executeAsRoot("$command >/dev/null 2>&1; printf '%s' \$?").getOrNull() == "0"
 
-    fun runRootScript(context: Context, script: String): String? {
+    fun runRootScript(context: Context, script: String, arguments: List<String> = emptyList()): String? {
+        if (!script.matches(Regex("[A-Za-z0-9_.-]+"))) return null
         val filesPath = File(context.filesDir, ASSET_SUBFOLDER).absolutePath
         val logPath = getLogFile(context)?.absolutePath ?: return null
         val workingPath = context.getExternalFilesDir(null)?.absolutePath ?: return null
-        val command = "THORTOOLS_WORKING_PATH=\"$workingPath\" sh $filesPath/support/subscripts/$script $filesPath > $logPath; printf '%s' $?"
+        val scriptPath = "$filesPath/support/subscripts/$script"
+        val commandArguments = arguments.joinToString(" ") { shellQuote(it) }
+        val command = "THORTOOLS_WORKING_PATH=${shellQuote(workingPath)} sh ${shellQuote(scriptPath)} $commandArguments > ${shellQuote(logPath)} 2>&1; printf '%s' $?"
         return RootExec().executeAsRoot(command).getOrNull()
     }
+
+    private fun shellQuote(value: String): String = "'${value.replace("'", "'\\''")}'"
 
     fun checkFileExistsRoot(context: Context, path: String): Boolean =
         runRootCommand(context, "[ -e \"$path\" ] && echo 1 || echo 0") == "1"
 
-    fun reboot(context: Context): Boolean = runRootAction(context, "reboot")
+    fun reboot(context: Context): Boolean =
+        RootExec().executeAsRoot("reboot >/dev/null 2>&1 & printf '%s' 0").getOrNull() == "0"
 
     fun rootCopy(context: Context, from: String, to: String): Boolean =
         File(from).exists() && runRootAction(context, "cp -afv \"$from\" \"$to\"")

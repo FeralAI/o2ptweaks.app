@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import dev.adrian.thortools.DeviceProfile
 import dev.adrian.thortools.DeviceProperties
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -29,7 +30,7 @@ object SystemUtils {
         buildDisplayId = getProp("ro.build.display.id"),
         buildDate = getProp("ro.build.date"),
         serial = getProp("ro.serialno"),
-        slot = getProp("ro.boot.slot_suffix"),
+        slot = DeviceProfile.normalizeSlot(getProp("ro.boot.slot_suffix")),
     )
 
     fun getKernelVersion(context: Context): String =

@@ -20,18 +20,22 @@ import androidx.core.view.WindowInsetsControllerCompat
 import dev.adrian.thortools.screens.ThorControlScreen
 import dev.adrian.thortools.screens.ThorDashboardScreen
 import dev.adrian.thortools.ui.theme.ThorToolsTheme
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var session: ThorSession
     private var displayManager: DisplayManager? = null
     private var secondaryPresentation: ThorPresentation? = null
+    private var secondaryDisplayRetry: Job? = null
+    private var secondaryDisplayRetryCount = 0
     private var activityResumed = false
     private var hasThorLowerDisplay by mutableStateOf(false)
 
     private val displayListener = object : DisplayManager.DisplayListener {
         override fun onDisplayAdded(displayId: Int) {
-            showSecondaryDisplay()
+            requestSecondaryDisplay()
         }
 
         override fun onDisplayRemoved(displayId: Int) {
@@ -39,7 +43,7 @@ class MainActivity : ComponentActivity() {
         }
 
         override fun onDisplayChanged(displayId: Int) {
-            showSecondaryDisplay()
+            requestSecondaryDisplay()
         }
     }
 
@@ -66,14 +70,24 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         activityResumed = true
         displayManager?.registerDisplayListener(displayListener, null)
-        showSecondaryDisplay()
+        requestSecondaryDisplay()
     }
 
     override fun onStop() {
         activityResumed = false
+        secondaryDisplayRetry?.cancel()
+        secondaryDisplayRetry = null
+        secondaryDisplayRetryCount = 0
         dismissSecondaryDisplay()
         displayManager?.unregisterDisplayListener(displayListener)
         super.onStop()
+    }
+
+    private fun requestSecondaryDisplay() {
+        secondaryDisplayRetry?.cancel()
+        secondaryDisplayRetry = null
+        secondaryDisplayRetryCount = 0
+        showSecondaryDisplay()
     }
 
     private fun showSecondaryDisplay() {
@@ -86,6 +100,9 @@ class MainActivity : ComponentActivity() {
             dismissSecondaryDisplay()
             return
         }
+        secondaryDisplayRetry?.cancel()
+        secondaryDisplayRetry = null
+        secondaryDisplayRetryCount = 0
         hasThorLowerDisplay = true
         secondaryPresentation?.let { existing ->
             if (existing.display.displayId == display.displayId && existing.isShowing) return
@@ -97,11 +114,23 @@ class MainActivity : ComponentActivity() {
             if (secondaryPresentation === presentation) {
                 secondaryPresentation = null
                 hasThorLowerDisplay = false
+                scheduleSecondaryDisplayRetry()
             }
         }
         runCatching { presentation.show() }.onFailure {
             secondaryPresentation = null
             hasThorLowerDisplay = false
+            scheduleSecondaryDisplayRetry()
+        }
+    }
+
+    private fun scheduleSecondaryDisplayRetry() {
+        if (!activityResumed || secondaryDisplayRetry?.isActive == true || secondaryDisplayRetryCount >= 5) return
+        secondaryDisplayRetryCount += 1
+        secondaryDisplayRetry = lifecycleScope.launch {
+            delay(300L * secondaryDisplayRetryCount)
+            secondaryDisplayRetry = null
+            showSecondaryDisplay()
         }
     }
 

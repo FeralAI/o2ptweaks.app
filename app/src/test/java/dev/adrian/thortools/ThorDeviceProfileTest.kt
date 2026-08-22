@@ -56,4 +56,12 @@ class ThorDeviceProfileTest {
             0.001f,
         )
     }
+
+    @Test
+    fun normalizesActiveSlotIdentifiers() {
+        assertEquals("_a", DeviceProfile.normalizeSlot("_a"))
+        assertEquals("_a", DeviceProfile.normalizeSlot("a"))
+        assertEquals("_b", DeviceProfile.normalizeSlot(" B "))
+        assertEquals("", DeviceProfile.normalizeSlot("unknown"))
+    }
 }

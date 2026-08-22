@@ -115,6 +115,35 @@ interface SystemBackend {
     fun perform(operation: ThorOperation, argument: String? = null): OperationResult
 }
 
+object ThorOperationGuard {
+    private val imageOperations = setOf(
+        ThorOperation.BACKUP,
+        ThorOperation.PATCH,
+        ThorOperation.FLASH,
+        ThorOperation.RESTORE,
+    )
+
+    fun validate(snapshot: ThorSnapshot, operation: ThorOperation): String? {
+        if (operation.requiresThor && !snapshot.profile.isThor) return "Only an AYN Thor can be modified"
+        if (operation.requiresRootService && !snapshot.rootServiceAvailable) {
+            return "The Thor privileged root service is unavailable"
+        }
+        if (operation in imageOperations && snapshot.batteryPercent < 35) {
+            return "Charge the Thor to at least 35% before image operations"
+        }
+        if (operation in imageOperations && snapshot.activeSlot !in setOf("_a", "_b")) {
+            return "The active Thor slot could not be determined"
+        }
+        if (operation in imageOperations && !snapshot.backupDestinationWritable) {
+            return "The Thor backup destination is not writable"
+        }
+        if (operation == ThorOperation.BACKUP && !snapshot.initBootAvailable && !snapshot.bootAvailable) {
+            return "No supported Thor boot partition was found"
+        }
+        return null
+    }
+}
+
 class RealSystemBackend(private val context: Context) : SystemBackend {
     override fun snapshot(operation: OperationState): ThorSnapshot {
         val properties = SystemUtils.getDeviceProperties()
@@ -159,22 +188,7 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
 
     override fun perform(operation: ThorOperation, argument: String?): OperationResult {
         val current = snapshot()
-        if (operation.requiresThor && !current.profile.isThor) return OperationResult(false, "Only an AYN Thor can be modified")
-        if (operation.requiresRootService && !current.rootServiceAvailable) {
-            return OperationResult(false, "The Thor privileged root service is unavailable")
-        }
-        if (operation in setOf(ThorOperation.BACKUP, ThorOperation.PATCH, ThorOperation.FLASH, ThorOperation.RESTORE) && current.batteryPercent < 35) {
-            return OperationResult(false, "Charge the Thor to at least 35% before image operations")
-        }
-        if (operation in setOf(ThorOperation.BACKUP, ThorOperation.PATCH, ThorOperation.FLASH, ThorOperation.RESTORE) && current.activeSlot !in setOf("_a", "_b")) {
-            return OperationResult(false, "The active Thor slot could not be determined")
-        }
-        if (operation in setOf(ThorOperation.BACKUP, ThorOperation.PATCH, ThorOperation.FLASH, ThorOperation.RESTORE) && !current.backupDestinationWritable) {
-            return OperationResult(false, "The Thor backup destination is not writable")
-        }
-        if (operation == ThorOperation.BACKUP && !current.initBootAvailable && !current.bootAvailable) {
-            return OperationResult(false, "No supported Thor boot partition was found")
-        }
+        ThorOperationGuard.validate(current, operation)?.let { return OperationResult(false, it) }
         return when (operation) {
             ThorOperation.REFRESH -> OperationResult(true, "System state refreshed")
             ThorOperation.INSTALL_MAGISK -> {
@@ -219,12 +233,14 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
                 val value = argument?.toIntOrNull() ?: return OperationResult(false, "Invalid DPI")
                 if (value !in AppSettings.DPI_MIN..AppSettings.DPI_MAX) return OperationResult(false, "DPI must be between ${AppSettings.DPI_MIN} and ${AppSettings.DPI_MAX}")
                 val changed = RootUtils.setDpi(context, value)
+                if (changed) AppSettings.setDpi(AppSettings.getSharedPrefs(context), value)
                 OperationResult(changed, if (changed) "DPI set to $value" else "The Thor DPI command failed")
             }
             ThorOperation.SET_ANIMATION -> {
                 val value = argument?.toFloatOrNull() ?: return OperationResult(false, "Invalid animation speed")
                 if (!value.isFinite() || value !in 0f..1f) return OperationResult(false, "Animation speed must be between 0x and 1x")
                 val changed = RootUtils.setAnimationSpeed(context, value)
+                if (changed) AppSettings.setAnimationSpeed(AppSettings.getSharedPrefs(context), value)
                 OperationResult(changed, if (changed) "Animation speed set to ${value}x" else "The Thor animation command failed")
             }
             ThorOperation.SET_VOLUME_STEPS -> {
@@ -290,7 +306,12 @@ class ThorSession(
     fun run(scope: CoroutineScope, operation: ThorOperation, argument: String? = null) {
         if (snapshot.operation.status == OperationStatus.RUNNING) return
         val running = OperationState(operation, OperationStatus.RUNNING, "${operation.name.lowercase().replace('_', ' ')} in progress")
-        persistJournal(running)
+        if (!persistJournal(running)) {
+            snapshot = snapshot.copy(
+                operation = OperationState(operation, OperationStatus.FAILURE, "Could not save the operation recovery record"),
+            )
+            return
+        }
         snapshot = snapshot.copy(operation = running)
         scope.launch {
             val result = try {
@@ -314,17 +335,17 @@ class ThorSession(
         }
     }
 
-    private fun persistJournal(state: OperationState) {
-        AppSettings.getSharedPrefs(context).edit()
+    private fun persistJournal(state: OperationState): Boolean {
+        return AppSettings.getSharedPrefs(context).edit()
             .putString(AppSettings.JOURNAL_OPERATION_KEY, state.operation?.name)
             .putString(AppSettings.JOURNAL_MESSAGE_KEY, state.message)
-            .apply()
+            .commit()
     }
 
-    private fun clearJournal() {
-        AppSettings.getSharedPrefs(context).edit()
+    private fun clearJournal(): Boolean {
+        return AppSettings.getSharedPrefs(context).edit()
             .remove(AppSettings.JOURNAL_OPERATION_KEY)
             .remove(AppSettings.JOURNAL_MESSAGE_KEY)
-            .apply()
+            .commit()
     }
 }

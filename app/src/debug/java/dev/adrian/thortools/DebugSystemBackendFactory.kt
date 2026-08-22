@@ -57,6 +57,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
     override fun snapshot(operation: OperationState): ThorSnapshot = state.copy(operation = operation)
 
     override fun perform(operation: ThorOperation, argument: String?): OperationResult {
+        ThorOperationGuard.validate(state, operation)?.let { return OperationResult(false, it) }
         when (operation) {
             ThorOperation.BACKUP -> {
                 writeImages("boot", "init_boot")

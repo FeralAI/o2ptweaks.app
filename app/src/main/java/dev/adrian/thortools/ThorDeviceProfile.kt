@@ -90,6 +90,12 @@ object DeviceProfile {
     fun isThorLowerDisplay(widthPixels: Int, heightPixels: Int): Boolean =
         widthPixels == LOWER_WIDTH_PIXELS && heightPixels == LOWER_HEIGHT_PIXELS
 
+    fun normalizeSlot(value: String): String = when (value.trim().lowercase()) {
+        "a", "_a" -> "_a"
+        "b", "_b" -> "_b"
+        else -> ""
+    }
+
     fun displayKind(widthPixels: Int, heightPixels: Int): String = if (
         widthPixels <= 1400 && heightPixels >= 900 && widthPixels.toFloat() / heightPixels < 1.4f
     ) {

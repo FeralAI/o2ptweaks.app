@@ -90,14 +90,14 @@ object PatchUtils {
         if (nonEmpty(initBootSource) && RootUtils.hasPartition(context, "init_boot", slot)) {
             val initBootPatched = FileUtils.getPathBackup(context, "/init_boot_patched$slot.img")
             FileUtils.deleteFile(initBootPatched)
-            if (RootUtils.runRootScript(context, "init_boot.patch.sh \"$magiskPath\"") == "0" && nonEmpty(initBootPatched)) {
+            if (RootUtils.runRootScript(context, "init_boot.patch.sh", listOf(magiskPath)) == "0" && nonEmpty(initBootPatched)) {
                 return initBootPatched
             }
         }
         if (nonEmpty(bootSource) && RootUtils.hasPartition(context, "boot", slot)) {
             val bootPatched = FileUtils.getPathBackup(context, "/boot_patched$slot.img")
             FileUtils.deleteFile(bootPatched)
-            if (RootUtils.runRootScript(context, "boot.patch.sh \"$magiskPath\"") == "0" && nonEmpty(bootPatched)) {
+            if (RootUtils.runRootScript(context, "boot.patch.sh", listOf(magiskPath)) == "0" && nonEmpty(bootPatched)) {
                 return bootPatched
             }
         }

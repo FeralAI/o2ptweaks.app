@@ -7,6 +7,8 @@ echo "Flash rooted init_boot.img starting..." > $LOG_FILE
 
 ACTIVE_SLOT=$(getprop ro.boot.slot_suffix)
 case "$ACTIVE_SLOT" in
+    a) ACTIVE_SLOT="_a" ;;
+    b) ACTIVE_SLOT="_b" ;;
     _a|_b) ;;
     *) exit 1 ;;
 esac

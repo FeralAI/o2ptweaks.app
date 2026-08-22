@@ -42,7 +42,7 @@ object MagiskUtil {
 
     fun installMagiskModule(context: Context, zipFile: String): Boolean {
         if (!FileUtils.checkFileExists(zipFile)) return false
-        return RootUtils.runRootCommand(context, "magisk --install-module \"$zipFile\"")?.startsWith("-") == true
+        return RootUtils.runRootCommand(context, "magisk --install-module \"$zipFile\" >/dev/null 2>&1; printf '%s' \$?") == "0"
     }
 
     fun installLocalMagiskUtils(context: Context): Boolean {
@@ -51,19 +51,25 @@ object MagiskUtil {
         if (!sourceApk.exists()) return false
         destination.mkdirs()
         val command = "unzip -o -q \"${sourceApk.absolutePath}\" -d \"${destination.absolutePath}/base\""
-        if (RootUtils.runRootCommand(context, command) == null) return false
-        val sourceRoot = "${destination.absolutePath}/base/lib/arm64"
-        listOf(
+        if (!RootUtils.runRootAction(context, command)) return false
+        val sourceRoot = listOf(
+            "${destination.absolutePath}/base/lib/arm64-v8a",
+            "${destination.absolutePath}/base/lib/arm64",
+        ).firstOrNull { File(it).isDirectory } ?: return false
+        val binaries = listOf(
             "libbusybox.so" to "busybox",
             "libinit-ld.so" to "init-ld",
             "libmagisk.so" to "magisk",
             "libmagiskboot.so" to "magiskboot",
             "libmagiskinit.so" to "magiskinit",
             "libmagiskpolicy.so" to "magiskpolicy",
-        ).forEach { (source, target) ->
-            RootUtils.runRootCommand(context, "cp -f \"$sourceRoot/$source\" \"${destination.absolutePath}/$target\"")
+        )
+        if (!binaries.all { (source, target) ->
+                RootUtils.runRootAction(context, "cp -f \"$sourceRoot/$source\" \"${destination.absolutePath}/$target\"")
+            }) return false
+        if (!RootUtils.runRootAction(context, "chmod a+x \"${destination.absolutePath}\"/*")) return false
+        return binaries.all { (_, target) ->
+            File(destination, target).isFile && File(destination, target).length() > 0
         }
-        RootUtils.runRootCommand(context, "chmod a+x \"${destination.absolutePath}\"/*")
-        return File(destination, "magisk").exists()
     }
 }

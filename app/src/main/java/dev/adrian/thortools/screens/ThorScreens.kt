@@ -17,6 +17,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
@@ -73,6 +74,7 @@ fun ThorControlScreen(
                 ThorSection.ABOUT -> AboutPanel(context)
             }
             if (session.snapshot.operation.status == OperationStatus.RUNNING) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 Text(
                     text = session.snapshot.operation.message,
                     modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -202,6 +204,9 @@ private fun DashboardOperation(snapshot: ThorSnapshot, context: Context) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Latest operation", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (snapshot.operation.status == OperationStatus.RUNNING) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
             Text(snapshot.operation.status.label())
             Text(snapshot.operation.message)
             Text("Recovery folder: ${context.getExternalFilesDir(null)?.absolutePath ?: "Unavailable"}", style = MaterialTheme.typography.bodySmall)

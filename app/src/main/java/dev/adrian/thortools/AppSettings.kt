@@ -69,28 +69,28 @@ object AppSettings {
         sharedPrefs.getFloat(ANIMATIONS_SPEED_KEY, defaultValue)
 
     fun setAnimationSpeed(sharedPrefs: SharedPreferences, value: Float) {
-        sharedPrefs.edit().putFloat(ANIMATIONS_SPEED_KEY, value.coerceIn(0f, 1f)).apply()
+        sharedPrefs.edit().putFloat(ANIMATIONS_SPEED_KEY, value.coerceIn(0f, 1f)).commit()
     }
 
     fun getDpi(sharedPrefs: SharedPreferences, defaultValue: Int? = null): Int =
         sharedPrefs.getInt(DPI_KEY, defaultValue ?: getPropLcdDensity(sharedPrefs))
 
     fun setDpi(sharedPrefs: SharedPreferences, value: Int) {
-        sharedPrefs.edit().putInt(DPI_KEY, value.coerceIn(DPI_MIN, DPI_MAX)).apply()
+        sharedPrefs.edit().putInt(DPI_KEY, value.coerceIn(DPI_MIN, DPI_MAX)).commit()
     }
 
     fun getVolumeSteps(sharedPrefs: SharedPreferences, defaultValue: Int = VOLUME_STEPS_DEFAULT): Int =
         sharedPrefs.getInt(VOLUME_STEPS_KEY, defaultValue)
 
     fun setVolumeSteps(sharedPrefs: SharedPreferences, value: Int) {
-        sharedPrefs.edit().putInt(VOLUME_STEPS_KEY, value.coerceIn(VOLUME_STEPS_MIN, VOLUME_STEPS_MAX)).apply()
+        sharedPrefs.edit().putInt(VOLUME_STEPS_KEY, value.coerceIn(VOLUME_STEPS_MIN, VOLUME_STEPS_MAX)).commit()
     }
 
     fun getSkipBootAnimation(sharedPrefs: SharedPreferences): Boolean =
         sharedPrefs.getBoolean(SKIP_BOOT_ANIMATION_KEY, false)
 
     fun setSkipBootAnimation(sharedPrefs: SharedPreferences, value: Boolean) {
-        sharedPrefs.edit().putBoolean(SKIP_BOOT_ANIMATION_KEY, value).apply()
+        sharedPrefs.edit().putBoolean(SKIP_BOOT_ANIMATION_KEY, value).commit()
     }
 
     var allowRootScreen = false
