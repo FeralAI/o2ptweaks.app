@@ -18,7 +18,7 @@ case "$ACTIVE_SLOT" in
     *) exit 1 ;;
 esac
 BOOT_DEVICE="$(resolve_partition "init_boot$ACTIVE_SLOT")"
-BOOT_IMG="$WORKING_PATH/init_boot$ACTIVE_SLOT.img"
+BOOT_IMG="${1:-$WORKING_PATH/init_boot$ACTIVE_SLOT.img}"
 if [ ! -s "$BOOT_IMG" ]; then
     BOOT_IMG="$DOWNLOAD_PATH/init_boot$ACTIVE_SLOT.img"
 fi

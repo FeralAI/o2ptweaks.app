@@ -16,6 +16,8 @@ Display and animation controls require the Thor privileged root service. Volume-
 
 The root flow checks the active slot and partition layout before every backup, patch, flash, and restore. It requires a 35% battery level, a non-empty image, and an explicit confirmation on the lower display for writes. Cached stock and patched images are hashed with SHA-256 and shown on the dashboard.
 
+Each recovery record is bound to its slot, partition, build fingerprint, file size, and hash. Editing, replacing, or carrying an image across an OTA invalidates it; run **Back up available slots** again after a firmware change.
+
 Flashing is blocked unless a stock active-slot restore source is still available. The patched-cache cleanup action only changes app-local files and remains available even when the privileged root service is temporarily unavailable.
 
 The lower-screen **Clear patched cache** action removes only Magisk-patched images. Stock backups remain available for restoration, and the restore flow can use the independent `Download` copy if the app-local stock image is unavailable.

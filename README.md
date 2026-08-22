@@ -17,6 +17,7 @@ The app enters diagnostics-only mode on other devices or when the Thor privilege
 - Optional boot-animation disable through a ThorTools Magisk module
 - SHA-256 hashes for cached stock and patched images
 - Stock restore fallback from the independent Download copy
+- Recovery records bound to the active slot, partition, build fingerprint, file size, and source hash
 - Dual-screen AYN Thor AVD and patched emulator compositor
 
 Thor-specific audio changes are intentionally deferred until they have been measured and validated on physical Thor hardware.
@@ -33,6 +34,8 @@ ANDROID_HOME=/path/to/android-sdk ./gradlew assembleAlpha
 ```
 
 The debug APK uses the deterministic fake backend for emulator validation. The alpha APK keeps the real Thor backend while using the automatically generated debug signing key, so it is the build to install on physical hardware. The emulator validates the dual-screen layout, touch mapping, and UI state. It cannot validate real root services or partition writes. Keep `AYN_THOR_ALLOW_STOCK_EMULATOR=1` limited to UI diagnostics when the patched overlay is unavailable.
+
+After a firmware or OTA change, create a new stock backup before patching or flashing. ThorTools rejects images whose recorded build fingerprint, size, or SHA-256 no longer matches the current device.
 
 ## Release
 

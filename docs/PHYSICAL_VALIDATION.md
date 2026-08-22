@@ -26,6 +26,7 @@ Record the complete property dump for at least these devices:
 - Compare the SHA-256 values shown by ThorTools with independently calculated hashes.
 - Restart the app and confirm stock images and hashes remain visible.
 - Remove or hide the app-local stock image, verify the Download fallback is detected, and restore from it.
+- Change one image byte and confirm the dashboard no longer offers it for patch, flash, or restore.
 
 ## Root flow
 
@@ -40,7 +41,8 @@ Record the complete property dump for at least these devices:
 ## OTA and rollback
 
 - With stock images restored, install an OTA and record the resulting active slot and firmware.
-- Re-run diagnostics and verify that stale patched images cannot be selected for flashing.
+- Re-run diagnostics and verify that stale stock and patched images cannot be selected for patching, flashing, or restoring.
+- Repeat the stock backup before starting the root flow again.
 - Repeat backup, patch, flash, reboot, and restore on the second tested device.
 
 ## Release evidence

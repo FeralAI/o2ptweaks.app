@@ -21,6 +21,7 @@ private class FakeSystemBackend(private val context: Context) : SystemBackend {
                 buildId = "THOR_DEBUG",
                 buildDisplayId = "ThorTools AVD",
                 buildDate = "2026-08-19",
+                buildFingerprint = "AYN/Thor/ThorTools:13/THOR_DEBUG/10001:userdebug/test-keys",
                 serial = "thor-avd",
                 slot = "_a",
             ),

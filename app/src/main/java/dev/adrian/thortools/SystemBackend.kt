@@ -238,21 +238,21 @@ class RealSystemBackend(private val context: Context) : SystemBackend {
             } else {
                 val patched = PatchUtils.patchBoot(context)
                 if (patched.isNotBlank()) OperationResult(true, "Created $patched")
-                else OperationResult(false, "Magisk could not patch a backed-up partition")
+                else OperationResult(false, "A verified current-build stock image is required before patching")
             }
             ThorOperation.FLASH -> if (!current.magiskInstalled || !current.patchedBackupAvailable) {
                 OperationResult(false, "A Magisk-patched active-slot image is required")
             } else if (PatchUtils.flashBoot(context)) {
                 OperationResult(true, "Root patch flashed; reboot required")
             } else {
-                OperationResult(false, "No patched active-slot image is available")
+                OperationResult(false, "No verified current-build active-slot patch is available")
             }
             ThorOperation.RESTORE -> if (!current.stockRestoreAvailable) {
                 OperationResult(false, "A stock active-slot backup is required")
             } else if (PatchUtils.restoreBoot(context)) {
                 OperationResult(true, "Stock image restored; reboot required")
             } else {
-                OperationResult(false, "No stock active-slot image is available")
+                OperationResult(false, "No verified current-build stock image is available")
             }
             ThorOperation.CLEAR_CACHE -> {
                 val cleared = PatchUtils.clearBootCache(context)

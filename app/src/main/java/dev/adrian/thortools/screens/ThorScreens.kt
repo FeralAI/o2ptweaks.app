@@ -189,6 +189,7 @@ private fun DashboardIdentity(snapshot: ThorSnapshot) {
             DataLine("Firmware", snapshot.profile.properties.firmware)
             DataLine("Build", snapshot.profile.properties.buildDisplayId.ifBlank { snapshot.profile.properties.buildId })
             DataLine("Build date", snapshot.profile.properties.buildDate)
+            DataLine("Build fingerprint", snapshot.profile.properties.buildFingerprint)
             DataLine("Serial", snapshot.profile.properties.serial)
             DataLine("Active slot", snapshot.activeSlot)
             DataLine("Root service", if (snapshot.rootServiceAvailable) "Available" else "Unavailable")

@@ -2,34 +2,54 @@ package dev.adrian.thortools.utils
 
 import android.content.Context
 import java.io.File
-import java.security.MessageDigest
 
 object PatchUtils {
     private val slots = listOf("_a", "_b")
+    private val partitions = listOf("init_boot", "boot")
 
     fun backupBoot(context: Context): Boolean {
         if (!RootUtils.hasPServer() || !FileUtils.isBackupDestinationWritable(context)) return false
+        val initBootRequired = slots.any { RootUtils.hasPartition(context, "init_boot", it) }
+        val bootRequired = slots.any { RootUtils.hasPartition(context, "boot", it) }
         val requiredSlots = slots.filter { slot ->
-            RootUtils.hasPartition(context, "init_boot", slot) ||
-                RootUtils.hasPartition(context, "boot", slot)
+            (initBootRequired && RootUtils.hasPartition(context, "init_boot", slot)) ||
+                (bootRequired && RootUtils.hasPartition(context, "boot", slot))
         }.toSet()
-        val initBootBackedUp = RootUtils.runRootScript(context, "init_boot.backup.sh") == "0"
-        val bootBackedUp = RootUtils.runRootScript(context, "boot.backup.sh") == "0"
-        return (initBootBackedUp || bootBackedUp) &&
-            hasCompleteSlotCoverage(requiredSlots, stockBackupSlots(context))
+        if (requiredSlots.isEmpty()) return false
+        val initBootBackedUp = !initBootRequired || RootUtils.runRootScript(context, "init_boot.backup.sh") == "0"
+        val bootBackedUp = !bootRequired || RootUtils.runRootScript(context, "boot.backup.sh") == "0"
+        if (!initBootBackedUp || !bootBackedUp) return false
+        if (!RecoveryManifestStore.recordLocalImages(context, localImageInputs(context, patched = false))) return false
+        return hasCompleteSlotCoverage(requiredSlots, stockBackupSlots(context))
     }
 
     internal fun hasCompleteSlotCoverage(requiredSlots: Set<String>, backedUpSlots: Set<String>): Boolean =
         requiredSlots.isNotEmpty() && requiredSlots.all(backedUpSlots::contains)
 
     fun stockBackupSlots(context: Context): Set<String> = slots.filter { slot ->
-        nonEmpty(FileUtils.getPathBackup(context, "/init_boot$slot.img")) ||
-            nonEmpty(FileUtils.getPathBackup(context, "/boot$slot.img"))
+        partitions.any { partition ->
+            RootUtils.hasPartition(context, partition, slot) && RecoveryManifestStore.hasVerifiedStockImage(
+                context = context,
+                slot = slot,
+                partition = partition,
+                localPath = stockPath(context, partition, slot),
+                downloadPath = downloadPath(partition, slot),
+                buildIdentity = currentBuildIdentity(),
+            )
+        }
     }.toSet()
 
     fun patchedBackupSlots(context: Context): Set<String> = slots.filter { slot ->
-        nonEmpty(FileUtils.getPathBackup(context, "/init_boot_patched$slot.img")) ||
-            nonEmpty(FileUtils.getPathBackup(context, "/boot_patched$slot.img"))
+        partitions.any { partition ->
+            RootUtils.hasPartition(context, partition, slot) && RecoveryManifestStore.hasVerifiedPatchedImage(
+                context = context,
+                slot = slot,
+                partition = partition,
+                localPath = patchedPath(context, partition, slot),
+                stockPath = stockPath(context, partition, slot),
+                buildIdentity = currentBuildIdentity(),
+            )
+        }
     }.toSet()
 
     fun checkActiveSlotBackupExists(context: Context): Boolean {
@@ -39,14 +59,17 @@ object PatchUtils {
 
     fun checkActiveSlotRestoreExists(context: Context): Boolean {
         val slot = validSlot() ?: return false
-        val localImages = listOf(
-            FileUtils.getPathBackup(context, "/init_boot$slot.img"),
-            FileUtils.getPathBackup(context, "/boot$slot.img"),
-        )
-        if (localImages.any(::nonEmpty)) return true
-        if (!RootUtils.hasPServer()) return false
-        return downloadStockImageAvailable(context, slot, "init_boot") ||
-            downloadStockImageAvailable(context, slot, "boot")
+        val buildIdentity = currentBuildIdentity()
+        return partitions.any { partition ->
+            RootUtils.hasPartition(context, partition, slot) && RecoveryManifestStore.hasVerifiedStockImage(
+                context = context,
+                slot = slot,
+                partition = partition,
+                localPath = stockPath(context, partition, slot),
+                downloadPath = downloadPath(partition, slot),
+                buildIdentity = buildIdentity,
+            )
+        }
     }
 
     fun checkBootMagiskExists(context: Context): Boolean {
@@ -56,44 +79,54 @@ object PatchUtils {
 
     fun imagePaths(context: Context): Map<String, String> = slots.flatMap { slot ->
         listOf(
-            "init_boot$slot.img" to FileUtils.getPathBackup(context, "/init_boot$slot.img"),
-            "boot$slot.img" to FileUtils.getPathBackup(context, "/boot$slot.img"),
-            "init_boot_patched$slot.img" to FileUtils.getPathBackup(context, "/init_boot_patched$slot.img"),
-            "boot_patched$slot.img" to FileUtils.getPathBackup(context, "/boot_patched$slot.img"),
+            "init_boot$slot.img" to stockPath(context, "init_boot", slot),
+            "boot$slot.img" to stockPath(context, "boot", slot),
+            "init_boot_patched$slot.img" to patchedPath(context, "init_boot", slot),
+            "boot_patched$slot.img" to patchedPath(context, "boot", slot),
         )
     }.filter { (_, path) -> nonEmpty(path) }.toMap()
 
-    fun imageHashes(context: Context): Map<String, String> {
-        return imagePaths(context).mapNotNull { (name, path) ->
-            runCatching { name to sha256(path) }.getOrNull()
-        }.toMap()
-    }
+    fun imageHashes(context: Context): Map<String, String> = imagePaths(context).mapNotNull { (name, path) ->
+        RecoveryManifestStore.hashFile(path)?.let { name to it }
+    }.toMap()
 
     fun clearBootCache(context: Context): Boolean {
         var success = true
+        val removedNames = RecoveryManifestStore.records(context)
+            .filter { it.patched }
+            .mapTo(mutableSetOf()) { it.fileName }
         slots.forEach { slot ->
-            listOf(
-                "/boot_patched$slot.img",
-                "/init_boot_patched$slot.img",
-            ).forEach { relativePath ->
-                val path = FileUtils.getPathBackup(context, relativePath)
-                if (File(path).exists() && !FileUtils.deleteFile(path)) success = false
+            partitions.forEach { partition ->
+                val path = patchedPath(context, partition, slot)
+                if (File(path).exists()) {
+                    if (!FileUtils.deleteFile(path)) success = false else removedNames += File(path).name
+                }
             }
         }
+        if (!RecoveryManifestStore.removePatchedRecords(context, removedNames)) success = false
         return success
     }
 
     fun flashBoot(context: Context): Boolean {
         val slot = validSlot() ?: return false
-        val initBootPath = FileUtils.getPathBackup(context, "/init_boot_patched$slot.img")
-        val bootPath = FileUtils.getPathBackup(context, "/boot_patched$slot.img")
+        val buildIdentity = currentBuildIdentity()
         return when {
-            nonEmpty(initBootPath) && RootUtils.hasPartition(context, "init_boot", slot) -> {
-                RootUtils.runRootScript(context, "init_boot.flash.sh") == "0"
-            }
-            nonEmpty(bootPath) && RootUtils.hasPartition(context, "boot", slot) -> {
-                RootUtils.runRootScript(context, "boot.flash.sh") == "0"
-            }
+            RootUtils.hasPartition(context, "init_boot", slot) && RecoveryManifestStore.hasVerifiedPatchedImage(
+                context = context,
+                slot = slot,
+                partition = "init_boot",
+                localPath = patchedPath(context, "init_boot", slot),
+                stockPath = stockPath(context, "init_boot", slot),
+                buildIdentity = buildIdentity,
+            ) -> RootUtils.runRootScript(context, "init_boot.flash.sh") == "0"
+            RootUtils.hasPartition(context, "boot", slot) && RecoveryManifestStore.hasVerifiedPatchedImage(
+                context = context,
+                slot = slot,
+                partition = "boot",
+                localPath = patchedPath(context, "boot", slot),
+                stockPath = stockPath(context, "boot", slot),
+                buildIdentity = buildIdentity,
+            ) -> RootUtils.runRootScript(context, "boot.flash.sh") == "0"
             else -> false
         }
     }
@@ -101,21 +134,40 @@ object PatchUtils {
     fun patchBoot(context: Context): String {
         val magiskPath = MagiskUtil.getMagiskPath(context)
         val slot = validSlot() ?: return ""
+        val buildIdentity = currentBuildIdentity()
         if (magiskPath.isBlank()) return ""
-        val initBootSource = FileUtils.getPathBackup(context, "/init_boot$slot.img")
-        val bootSource = FileUtils.getPathBackup(context, "/boot$slot.img")
-        if (nonEmpty(initBootSource) && RootUtils.hasPartition(context, "init_boot", slot)) {
-            val initBootPatched = FileUtils.getPathBackup(context, "/init_boot_patched$slot.img")
-            FileUtils.deleteFile(initBootPatched)
-            if (RootUtils.runRootScript(context, "init_boot.patch.sh", listOf(magiskPath)) == "0" && nonEmpty(initBootPatched)) {
-                return initBootPatched
+        if (RootUtils.hasPartition(context, "init_boot", slot)) {
+            val source = stockPath(context, "init_boot", slot)
+            val sourceHash = RecoveryManifestStore.verifiedStockHash(
+                context = context,
+                slot = slot,
+                partition = "init_boot",
+                localPath = source,
+                buildIdentity = buildIdentity,
+            )
+            if (sourceHash != null) {
+                val output = patchedPath(context, "init_boot", slot)
+                if (patchPartition(context, "init_boot", output, magiskPath) &&
+                    recordPatchedImage(context, "init_boot", slot, output, buildIdentity, sourceHash)
+                ) return output
+                FileUtils.deleteFile(output)
             }
         }
-        if (nonEmpty(bootSource) && RootUtils.hasPartition(context, "boot", slot)) {
-            val bootPatched = FileUtils.getPathBackup(context, "/boot_patched$slot.img")
-            FileUtils.deleteFile(bootPatched)
-            if (RootUtils.runRootScript(context, "boot.patch.sh", listOf(magiskPath)) == "0" && nonEmpty(bootPatched)) {
-                return bootPatched
+        if (RootUtils.hasPartition(context, "boot", slot)) {
+            val source = stockPath(context, "boot", slot)
+            val sourceHash = RecoveryManifestStore.verifiedStockHash(
+                context = context,
+                slot = slot,
+                partition = "boot",
+                localPath = source,
+                buildIdentity = buildIdentity,
+            )
+            if (sourceHash != null) {
+                val output = patchedPath(context, "boot", slot)
+                if (patchPartition(context, "boot", output, magiskPath) &&
+                    recordPatchedImage(context, "boot", slot, output, buildIdentity, sourceHash)
+                ) return output
+                FileUtils.deleteFile(output)
             }
         }
         return ""
@@ -123,36 +175,95 @@ object PatchUtils {
 
     fun restoreBoot(context: Context): Boolean {
         val slot = validSlot() ?: return false
-        val initBootPath = FileUtils.getPathBackup(context, "/init_boot$slot.img")
-        val bootPath = FileUtils.getPathBackup(context, "/boot$slot.img")
-        return when {
-            (nonEmpty(initBootPath) || downloadStockImageAvailable(context, slot, "init_boot")) && RootUtils.hasPartition(context, "init_boot", slot) -> {
-                RootUtils.runRootScript(context, "init_boot.restore.sh") == "0"
+        val buildIdentity = currentBuildIdentity()
+        val initBootSource = if (RootUtils.hasPartition(context, "init_boot", slot)) {
+            RecoveryManifestStore.verifiedStockSource(
+                context = context,
+                slot = slot,
+                partition = "init_boot",
+                localPath = stockPath(context, "init_boot", slot),
+                downloadPath = downloadPath("init_boot", slot),
+                buildIdentity = buildIdentity,
+            )
+        } else {
+            null
+        }
+        if (initBootSource != null) {
+            return RootUtils.runRootScript(context, "init_boot.restore.sh", listOf(initBootSource)) == "0"
+        }
+        val bootSource = if (RootUtils.hasPartition(context, "boot", slot)) {
+            RecoveryManifestStore.verifiedStockSource(
+                context = context,
+                slot = slot,
+                partition = "boot",
+                localPath = stockPath(context, "boot", slot),
+                downloadPath = downloadPath("boot", slot),
+                buildIdentity = buildIdentity,
+            )
+        } else {
+            null
+        }
+        return bootSource != null && RootUtils.runRootScript(context, "boot.restore.sh", listOf(bootSource)) == "0"
+    }
+
+    private fun patchPartition(context: Context, partition: String, output: String, magiskPath: String): Boolean {
+        FileUtils.deleteFile(output)
+        return RootUtils.runRootScript(context, "$partition.patch.sh", listOf(magiskPath)) == "0" && nonEmpty(output)
+    }
+
+    private fun recordPatchedImage(
+        context: Context,
+        partition: String,
+        slot: String,
+        path: String,
+        buildIdentity: String,
+        sourceHash: String,
+    ): Boolean = RecoveryManifestStore.recordLocalImages(
+        context,
+        listOf(
+            RecoveryImageInput(
+                fileName = File(path).name,
+                slot = slot,
+                partition = partition,
+                patched = true,
+                path = path,
+                buildIdentity = buildIdentity,
+                sourceSha256 = sourceHash,
+            ),
+        ),
+    )
+
+    private fun localImageInputs(context: Context, patched: Boolean): List<RecoveryImageInput> {
+        val buildIdentity = currentBuildIdentity()
+        return slots.flatMap { slot ->
+            partitions.mapNotNull { partition ->
+                if (!RootUtils.hasPartition(context, partition, slot)) return@mapNotNull null
+                val path = if (patched) patchedPath(context, partition, slot) else stockPath(context, partition, slot)
+                if (!nonEmpty(path)) return@mapNotNull null
+                RecoveryImageInput(
+                    fileName = File(path).name,
+                    slot = slot,
+                    partition = partition,
+                    patched = patched,
+                    path = path,
+                    buildIdentity = buildIdentity,
+                )
             }
-            (nonEmpty(bootPath) || downloadStockImageAvailable(context, slot, "boot")) && RootUtils.hasPartition(context, "boot", slot) -> {
-                RootUtils.runRootScript(context, "boot.restore.sh") == "0"
-            }
-            else -> false
         }
     }
+
+    private fun stockPath(context: Context, partition: String, slot: String): String =
+        FileUtils.getPathBackup(context, "/$partition$slot.img")
+
+    private fun patchedPath(context: Context, partition: String, slot: String): String =
+        FileUtils.getPathBackup(context, "/${partition}_patched$slot.img")
+
+    private fun downloadPath(partition: String, slot: String): String =
+        FileUtils.getPathDownload("/$partition$slot.img")
+
+    private fun currentBuildIdentity(): String = SystemUtils.getDeviceProperties().buildIdentity
 
     private fun validSlot(): String? = SystemUtils.getPropSlot().takeIf { it == "_a" || it == "_b" }
 
-    private fun downloadStockImageAvailable(context: Context, slot: String, partitionName: String): Boolean =
-        RootUtils.checkFileNonEmptyRoot(context, FileUtils.getPathDownload("/$partitionName$slot.img"))
-
     private fun nonEmpty(path: String): Boolean = File(path).isFile && File(path).length() > 0
-
-    private fun sha256(path: String): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        File(path).inputStream().use { input ->
-            val buffer = ByteArray(1024 * 1024)
-            var read = input.read(buffer)
-            while (read > 0) {
-                digest.update(buffer, 0, read)
-                read = input.read(buffer)
-            }
-        }
-        return digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
-    }
 }

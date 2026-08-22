@@ -22,6 +22,7 @@ object AppSettings {
     const val PROP_VOLUME_STEPS_KEY = "propMediaVolSteps"
     const val JOURNAL_OPERATION_KEY = "journalOperation"
     const val JOURNAL_MESSAGE_KEY = "journalMessage"
+    const val RECOVERY_MANIFEST_KEY = "recoveryManifest"
 
     fun getSharedPrefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

@@ -25,6 +25,12 @@ class RecoveryScriptContractTest {
         }
     }
 
+    @Test
+    fun restoreScriptsAcceptAnExplicitVerifiedSource() {
+        assertTrue(script("boot.restore.sh").contains("BOOT_IMG=\"\${1:-\$WORKING_PATH/boot\$ACTIVE_SLOT.img}\""))
+        assertTrue(script("init_boot.restore.sh").contains("BOOT_IMG=\"\${1:-\$WORKING_PATH/init_boot\$ACTIVE_SLOT.img}\""))
+    }
+
     private fun script(name: String): String =
         File("src/main/assets/app/support/subscripts/$name").readText()
 }

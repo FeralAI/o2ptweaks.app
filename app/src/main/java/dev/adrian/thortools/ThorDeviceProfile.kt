@@ -33,9 +33,17 @@ data class DeviceProperties(
     val buildId: String = "",
     val buildDisplayId: String = "",
     val buildDate: String = "",
+    val buildFingerprint: String = "",
     val serial: String = "",
     val slot: String = "",
-)
+) {
+    val buildIdentity: String
+        get() = buildFingerprint.ifBlank {
+            listOf(buildId, buildDisplayId, firmware, buildDate)
+                .filter(String::isNotBlank)
+                .joinToString("|")
+        }
+}
 
 data class ThorDeviceProfile(
     val properties: DeviceProperties,

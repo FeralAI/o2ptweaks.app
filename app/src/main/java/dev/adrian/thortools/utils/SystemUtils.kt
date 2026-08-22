@@ -33,6 +33,7 @@ object SystemUtils {
         buildId = getProp("ro.build.id"),
         buildDisplayId = getProp("ro.build.display.id"),
         buildDate = getProp("ro.build.date"),
+        buildFingerprint = getProp("ro.build.fingerprint"),
         serial = getProp("ro.serialno"),
         slot = DeviceProfile.normalizeSlot(
             getProp("ro.boot.slot_suffix").ifBlank { getProp("ro.boot.slot") },

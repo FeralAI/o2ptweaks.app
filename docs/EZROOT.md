@@ -20,6 +20,8 @@ EZ Root is an on-device workflow for backing up, Magisk-patching, flashing, and 
 
 Before an OTA or service visit, use **Restore stock image**, confirm the active-slot prompt, and wait for the reboot to finish. If the app-local copy is unavailable, the restore script falls back to the matching `Download` copy.
 
+ThorTools records the build fingerprint, slot, partition, file size, and SHA-256 for every stock and patched image. An OTA, image replacement, or tampering invalidates the record, so repeat the stock-backup step after every firmware change before preparing another patch.
+
 If any capability check is unavailable, ThorTools leaves mutating actions disabled and keeps the device in diagnostics-only mode.
 
 Before a beta or stable release, complete the [physical Thor validation checklist](PHYSICAL_VALIDATION.md) on both required SoC classes.

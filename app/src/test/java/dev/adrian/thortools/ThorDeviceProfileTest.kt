@@ -68,6 +68,26 @@ class ThorDeviceProfileTest {
     }
 
     @Test
+    fun prefersBuildFingerprintForRecoveryIdentity() {
+        assertEquals(
+            "ayn/thor:13/THOR/1:user/release-keys",
+            DeviceProperties(
+                buildFingerprint = "ayn/thor:13/THOR/1:user/release-keys",
+                buildId = "fallback",
+            ).buildIdentity,
+        )
+        assertEquals(
+            "fallback|display|14|date",
+            DeviceProperties(
+                buildId = "fallback",
+                buildDisplayId = "display",
+                firmware = "14",
+                buildDate = "date",
+            ).buildIdentity,
+        )
+    }
+
+    @Test
     fun hidesThorCapabilitiesForDiagnosticsOutsideThor() {
         val snapshot = ThorSnapshot.loading(OperationState()).copy(
             profile = DeviceProfile.detect(DeviceProperties(model = "AYN Loki")).copy(

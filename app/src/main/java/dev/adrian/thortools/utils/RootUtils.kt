@@ -107,6 +107,12 @@ object RootUtils {
     fun checkFileNonEmptyRoot(context: Context, path: String): Boolean =
         runRootCommand(context, "[ -s ${shellQuote(path)} ] && printf '%s' 1 || printf '%s' 0") == "1"
 
+    fun sha256FileRoot(context: Context, path: String): String? =
+        runRootCommand(
+            context,
+            "if [ -s ${shellQuote(path)} ]; then sha256sum ${shellQuote(path)}; fi",
+        )?.trim()?.substringBefore(' ')?.takeIf { it.matches(Regex("[0-9a-fA-F]{64}")) }?.lowercase()
+
     fun reboot(context: Context): Boolean =
         RootExec().executeAsRoot("reboot >/dev/null 2>&1 & printf '%s' 0").getOrNull() == "0"
 

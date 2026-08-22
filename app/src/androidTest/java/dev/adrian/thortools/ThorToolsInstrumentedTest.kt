@@ -6,11 +6,15 @@ import androidx.test.platform.app.InstrumentationRegistry
 import android.content.pm.ActivityInfo
 import android.hardware.display.DisplayManager
 import androidx.lifecycle.Lifecycle
+import dev.adrian.thortools.utils.RecoveryImageInput
+import dev.adrian.thortools.utils.RecoveryManifestStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import java.io.File
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -64,6 +68,109 @@ class ThorToolsInstrumentedTest {
         val snapshot = backend.snapshot()
         assertEquals(setOf("_a", "_b"), snapshot.stockBackupSlots)
         assertTrue(snapshot.patchedBackupSlots.isEmpty())
+    }
+
+    @Test
+    fun recoveryManifestRejectsTamperingAndBuildChanges() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppSettings.getSharedPrefs(context)
+        val image = File(context.filesDir, "recovery-manifest-test.img")
+        val patched = File(context.filesDir, "recovery-manifest-test-patched.img")
+        preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
+        try {
+            image.writeText("stock")
+            assertTrue(
+                RecoveryManifestStore.recordLocalImages(
+                    context,
+                    listOf(
+                        RecoveryImageInput(
+                            fileName = image.name,
+                            slot = "_a",
+                            partition = "boot",
+                            patched = false,
+                            path = image.path,
+                            buildIdentity = "test-fingerprint",
+                        ),
+                    ),
+                ),
+            )
+            assertEquals(
+                image.path,
+                RecoveryManifestStore.verifiedStockSource(
+                    context,
+                    "_a",
+                    "boot",
+                    image.path,
+                    image.path,
+                    "test-fingerprint",
+                ),
+            )
+            image.writeText("tampered")
+            assertNull(
+                RecoveryManifestStore.verifiedStockSource(
+                    context,
+                    "_a",
+                    "boot",
+                    image.path,
+                    image.path,
+                    "test-fingerprint",
+                ),
+            )
+            image.writeText("stock")
+            assertNull(
+                RecoveryManifestStore.verifiedStockSource(
+                    context,
+                    "_a",
+                    "boot",
+                    image.path,
+                    image.path,
+                    "other-fingerprint",
+                ),
+            )
+            patched.writeText("patched")
+            val stockHash = RecoveryManifestStore.hashFile(image.path) ?: error("stock hash missing")
+            assertTrue(
+                RecoveryManifestStore.recordLocalImages(
+                    context,
+                    listOf(
+                        RecoveryImageInput(
+                            fileName = patched.name,
+                            slot = "_a",
+                            partition = "boot",
+                            patched = true,
+                            path = patched.path,
+                            buildIdentity = "test-fingerprint",
+                            sourceSha256 = stockHash,
+                        ),
+                    ),
+                ),
+            )
+            assertTrue(
+                RecoveryManifestStore.hasVerifiedPatchedImage(
+                    context,
+                    "_a",
+                    "boot",
+                    patched.path,
+                    image.path,
+                    "test-fingerprint",
+                ),
+            )
+            image.writeText("new-stock")
+            assertFalse(
+                RecoveryManifestStore.hasVerifiedPatchedImage(
+                    context,
+                    "_a",
+                    "boot",
+                    patched.path,
+                    image.path,
+                    "test-fingerprint",
+                ),
+            )
+        } finally {
+            preferences.edit().remove(AppSettings.RECOVERY_MANIFEST_KEY).commit()
+            image.delete()
+            patched.delete()
+        }
     }
 
     @Test
