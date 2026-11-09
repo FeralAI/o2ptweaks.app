@@ -17,6 +17,7 @@ These devices are confirmed to work:
 * AYN Odin2
 * AYN Odin2 Portal
 * Retroid Pocket 5
+* Retroid Pocket 6
 * Retroid Pocket Classic
 * Retroid Pocket Flip 2 (SD865 version)
 * Retroid Pocket Mini (V1 & V2)

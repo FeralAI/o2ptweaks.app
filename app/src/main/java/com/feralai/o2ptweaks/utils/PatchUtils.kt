@@ -87,8 +87,16 @@ object PatchUtils {
         val magiskPath = MagiskUtil.getMagiskPath(context)
 
         // Is Magisk available?
-        if (magiskPath == "")
+        if (magiskPath == "") {
+            // Previously failed silently with no log; leave a trace for debugging
+            FileUtils.saveFile(
+                FileUtils.getPathWorking(context, "/boot.patch.log"),
+                "Magisk utilities not found. Checked ${MagiskUtil.MAGISK_DIR}/magisk and " +
+                    "${FileUtils.getPathAppFiles(context, "/magisk/magisk")}.\n" +
+                    "Local extraction from the Magisk APK likely failed (missing libs or unzip error).\n"
+            )
             return ""
+        }
 
         var deleteBootImg = false
         var deleteInitImg = false

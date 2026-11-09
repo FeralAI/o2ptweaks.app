@@ -118,9 +118,8 @@ object MagiskUtil {
             RootUtils.runRootCommand(context, "cp -f \"$srcFile\" \"$dstFile\"")
         }
 
-        //RootUtils.runRootCommand(context, "chown -R root \"$dstPath/*\"")
-        //RootUtils.runRootCommand(context, "chmod 775 \"$dstPath/*\"")
-        RootUtils.runRootCommand(context, "chmod a+x \"$dstPath/*\"")
+        // Note: a quoted glob ("$dstPath/*") is never expanded by the shell, so use -R on the dir
+        RootUtils.runRootCommand(context, "chmod -R a+rx \"$dstPath\"")
 
         return true
     }
